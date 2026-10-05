@@ -1,0 +1,19 @@
+.interpretacion {
+  background: #e8f4f3;
+  border-left: 4px solid #0f6e6a;
+  border-radius: 0 8px 8px 0;
+  padding: 12px 18px;
+  margin: 14px 0 22px;
+}
+.interpretacion p { margin: 6px 0; }
+.interpretacion ul { margin: 6px 0; }
+.precaucion {
+  background: #fff7ec;
+  border-left: 4px solid #e08a1e;
+  border-radius: 0 8px 8px 0;
+  padding: 12px 18px;
+  margin: 14px 0 22px;
+  color: #6b3c05;
+}
+.book .book-body .page-wrapper .page-inner section.normal table { font-size: 0.9em; }
+.book .book-body .page-wrapper .page-inner section.normal em { color: #0f6e6a; }
