@@ -1,0 +1,1612 @@
+# Análisis exploratorio de datos {#eda}
+
+Este capítulo contiene el EDA completo en R. Las secciones desde la preparación de los datos hasta el resumen estadístico general responden al objetivo específico 1 (conocer los datos), la sección \@ref(variable-objetivo) al objetivo específico 2 (la variable objetivo del modelo) y el capítulo \@ref(conclusiones) al objetivo específico 3 (implicaciones para el modelo); ver los objetivos en la sección \@ref(objetivos). Cada resultado va seguido de su **interpretación** (recuadros verdes). Los recuadros naranjas de **precaución** señalan problemas de calidad de datos que cambian la lectura de un resultado.
+
+## Preparación y calidad de los datos
+
+*Objetivo específico 1 · calidad de los datos.*
+
+```{r eda-001}
+# Dimensiones del dataset
+dim(df)
+```
+
+::: {.interpretacion}
+**Interpretación.** El archivo original tiene `r fmt(n_original, 0)` filas y `r ncol(df)` columnas. Cada fila es el **resumen anual** de una variable, en una estación y para un tiempo de exposición, no una medición individual.
+:::
+
+```{r eda-002}
+# Estructura del dataset
+str(df)
+```
+
+::: {.interpretacion}
+**Interpretación.** `read_csv()` reconoce correctamente como numéricas las columnas que traen comas de miles (por ejemplo `Año`, `Promedio` y `Suma`), así que en R no fue necesario convertirlas a mano.
+:::
+
+```{r eda-003}
+# Nombres de las variables
+names(df)
+```
+
+```{r eda-004}
+# Cantidad de valores faltantes por variable
+colSums(is.na(df))
+```
+
+```{r eda-005}
+# Porcentaje de valores faltantes por variable
+porcentaje_na <- colSums(is.na(df)) / nrow(df) * 100
+
+porcentaje_na
+```
+
+::: {.interpretacion}
+**Interpretación.** Solo tres columnas tienen faltantes y ninguna supera el 0,5 %: `Representatividad Temporal`, `Código del Municipio` y `Tipo de Estación`. Las columnas que usa el análisis (`Variable`, `Año`, `Promedio`) están completas, así que no hace falta imputar ni eliminar filas por faltantes.
+:::
+
+```{r eda-006}
+# Cantidad de filas duplicadas
+sum(duplicated(df))
+```
+
+```{r eda-007}
+# Comparar registros originales y registros únicos
+
+df_unicos <- distinct(df)
+
+cat("Filas originales:", nrow(df), "\n")
+```
+
+```{r eda-008}
+cat("Filas únicas:", nrow(df_unicos), "\n")
+```
+
+```{r eda-009}
+cat("Duplicados:", nrow(df) - nrow(df_unicos), "\n")
+```
+
+```{r eda-010}
+# Porcentaje de duplicados
+porcentaje_duplicados <- sum(duplicated(df)) / nrow(df) * 100
+
+cat("Porcentaje de filas duplicadas:", round(porcentaje_duplicados, 2), "%")
+```
+
+::: {.interpretacion}
+**Interpretación.** Casi la mitad del archivo (`r fmt(porcentaje_duplicados, 2)` %) son filas idénticas a otra. Una proporción así indica que el consolidado se armó juntando reportes que se solaparon, no que se repitieran mediciones reales. Si no se eliminaran, cada estación duplicada pesaría el doble en promedios y conteos. Por eso el resto del análisis trabaja con las filas únicas.
+:::
+
+```{r eda-011}
+# Eliminar registros duplicados
+df <- distinct(df)
+
+# Comprobar las nuevas dimensiones
+dim(df)
+```
+
+```{r eda-012}
+# Verificar que no queden registros duplicados
+sum(duplicated(df))
+```
+
+```{r eda-013}
+# Revisar tipos de datos
+str(df)
+```
+
+::: {.interpretacion}
+**Interpretación.** Después de eliminar duplicados quedan `r fmt(nrow(df), 0)` registros únicos, que son la base de todo el análisis.
+:::
+
+## Exploración general del dataset
+
+*Objetivo específico 1 · cobertura del monitoreo.*
+
+```{r eda-014}
+# Frecuencia de las variables ambientales
+table(df$Variable)
+```
+
+```{r eda-015}
+# Número de variables ambientales diferentes
+length(unique(df$Variable))
+```
+
+::: {.interpretacion}
+**Interpretación.** Hay `r length(unique(df$Variable))` variables, que se agrupan en contaminantes (PM10, PM2.5, PST, NO, NO₂, O₃, SO₂, CO) y meteorológicas (temperatura, humedad, viento, presión, precipitación y radiación). La temperatura y la humedad aparecen en tres versiones (sin altura, a 2 m y a 10 m), que son variables distintas y no deben mezclarse.
+:::
+
+### Distribución de registros por estación
+
+```{r eda-016}
+# Número de estaciones diferentes
+length(unique(df$Estación))
+```
+
+```{r eda-017}
+# Frecuencia de registros por estación
+sort(table(df$Estación), decreasing = TRUE)
+```
+
+```{r eda-018}
+# Número de registros por estación
+
+registros_estacion <- df %>% count(Estación, sort = TRUE)
+
+head(registros_estacion, 10)
+```
+
+```{r eda-019}
+# Distribución de registros por estación
+
+top_estaciones <- registros_estacion %>% slice_max(n, n = 15) %>% mutate(Estación = reorder(Estación, n))
+ggplot(top_estaciones, aes(x = Estación, y = n)) + geom_col() + geom_text(aes(label = n), hjust = -0.1, size = 3.5) + coord_flip() + labs(title = "15 estaciones con mayor número de registros", x = "Estación", y = "Número de registros") + theme_minimal() + expand_limits(y = max(top_estaciones$n) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** Las estaciones con más registros (Centro de Alto Rendimiento, Kennedy, Tunal, Las Ferias, Guaymaral, Puente Aranda) son todas de **Bogotá**. Son estaciones que miden muchas variables a la vez durante todo el periodo, por eso dominan el conteo.
+:::
+
+### Distribución de registros por variable ambiental
+
+```{r eda-020}
+# Frecuencia de las variables ambientales
+
+frecuencia_variables <- df %>% count(Variable, sort = TRUE)
+
+frecuencia_variables
+```
+
+```{r eda-021}
+# Distribución de registros por variable ambiental
+
+ggplot(frecuencia_variables, aes(x = reorder(Variable, n), y = n)) + geom_col() + geom_text(aes(label = n), hjust = -0.1, size = 3.5) + coord_flip() + labs(title = "Número de registros por variable ambiental", x = "Variable ambiental", y = "Número de registros") + theme_minimal() + expand_limits(y = max(frecuencia_variables$n) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** PM10 y PM2.5 suman `r fmt(sum(df$Variable %in% c('PM10','PM2.5')) / nrow(df) * 100, 0)` % de los registros: el material particulado es el contaminante más vigilado por su efecto en la salud. En el otro extremo, TAire, HAire y RUVb tienen menos de 80 registros cada uno, así que cualquier conclusión sobre ellos descansa en muy poca información.
+:::
+
+## Distribución temporal de los registros
+
+```{r eda-022}
+# Distribución de registros por año
+
+frecuencia_anios <- df %>%
+  count(Año, name = "n") %>%
+  arrange(Año)
+```
+
+```{r eda-023}
+# Distribución de registros por año
+
+ggplot(frecuencia_anios, aes(x = reorder(Año, n), y = n)) +
+  geom_col() +
+  geom_text(aes(label = n), hjust = -0.1, size = 3.5) +
+  coord_flip() +
+  labs(
+    title = "Número de registros por año",
+    x = "Año",
+    y = "Número de registros"
+  ) +
+  theme_minimal() +
+  expand_limits(y = max(frecuencia_anios$n) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** El gráfico ordena los años por número de registros. Los años con más datos son los recientes (2020–2022) y los de menos son los primeros (2011–2012): la red de monitoreo se triplicó en el periodo. La caída de 2023–2024 puede deberse a reportes incompletos o al cierre de estaciones; el dataset no permite distinguirlo.
+
+**Consecuencia para el análisis:** cuando el promedio anual de una variable cambia, parte del cambio puede venir de que entraron o salieron estaciones, y no solo de cambios reales en el aire.
+:::
+
+## Estadística descriptiva y distribución de variables ambientales
+
+```{r eda-024}
+# Estadística descriptiva de las variables ambientales
+
+estadistica_variables <- df %>%
+  group_by(Variable) %>%
+  summarise(
+    n = n(),
+    Media = mean(Promedio, na.rm = TRUE),
+    Mediana = median(Promedio, na.rm = TRUE),
+    Desviacion_Estandar = sd(Promedio, na.rm = TRUE),
+    Minimo = min(Promedio, na.rm = TRUE),
+    Q1 = quantile(Promedio, 0.25, na.rm = TRUE),
+    Q3 = quantile(Promedio, 0.75, na.rm = TRUE),
+    Maximo = max(Promedio, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+estadistica_variables
+```
+
+::: {.interpretacion}
+**Interpretación.** Las escalas son muy distintas (presión cerca de 700 mmHg, viento cerca de 1 m/s), así que cada variable solo se compara consigo misma.
+
+En casi todos los contaminantes la media es mayor que la mediana (PM10: `r fmt(mean(serie('PM10')), 1)` frente a `r fmt(median(serie('PM10')), 1)`; SO₂: `r fmt(mean(serie('SO2')), 1)` frente a `r fmt(median(serie('SO2')), 1)`). Eso indica **asimetría positiva**: unas pocas estaciones con valores altos jalan el promedio hacia arriba.
+
+**PLiquida** es el caso extremo: su media (`r fmt(mean(serie('PLiquida')), 1)` mm) es muy superior a la mediana (`r fmt(median(serie('PLiquida')), 1)` mm) por unos pocos valores enormes (máximo `r fmt(max(serie('PLiquida')), 1)` mm). Para esta variable la mediana es la medida de tendencia central adecuada.
+:::
+
+### Distribución de las variables ambientales
+
+```{r eda-025, fig.height = 6}
+# Distribución de las variables ambientales 1-5
+
+ggplot(df %>% filter(Variable %in% unique(Variable)[1:5]), aes(x = "", y = Promedio)) + geom_boxplot(width = 0.5) + facet_wrap(~Variable, ncol = 2, scales = "free_y") + labs(title = "Distribución de las variables ambientales", subtitle = "Variables ambientales 1-5", x = NULL, y = "Valor promedio") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), strip.text = element_text(face = "bold", size = 12), axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.grid.major.x = element_blank())
+```
+
+```{r eda-026, fig.height = 6}
+# Distribución de las variables ambientales 6-10
+
+ggplot(df %>% filter(Variable %in% unique(Variable)[6:10]), aes(x = "", y = Promedio)) + geom_boxplot(width = 0.5) + facet_wrap(~Variable, ncol = 2, scales = "free_y") + labs(title = "Distribución de las variables ambientales", subtitle = "Variables ambientales 6-10", x = NULL, y = "Valor promedio") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), strip.text = element_text(face = "bold", size = 12), axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.grid.major.x = element_blank())
+```
+
+```{r eda-027, fig.height = 6}
+# Distribución de las variables ambientales 11-15
+
+ggplot(df %>% filter(Variable %in% unique(Variable)[11:15]), aes(x = "", y = Promedio)) + geom_boxplot(width = 0.5) + facet_wrap(~Variable, ncol = 2, scales = "free_y") + labs(title = "Distribución de las variables ambientales", subtitle = "Variables ambientales 11-15", x = NULL, y = "Valor promedio") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), strip.text = element_text(face = "bold", size = 12), axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.grid.major.x = element_blank())
+```
+
+```{r eda-028, fig.height = 6}
+# Distribución de las variables ambientales 16-20
+
+ggplot(df %>% filter(Variable %in% unique(Variable)[16:20]), aes(x = "", y = Promedio)) + geom_boxplot(width = 0.5) + facet_wrap(~Variable, ncol = 2, scales = "free_y") + labs(title = "Distribución de las variables ambientales", subtitle = "Variables ambientales 16-20", x = NULL, y = "Valor promedio") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), strip.text = element_text(face = "bold", size = 12), axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.grid.major.x = element_blank())
+```
+
+::: {.interpretacion}
+**Interpretación.** Los diagramas de caja confirman la asimetría: en la mayoría de las variables los puntos aislados aparecen por encima de la caja, no por debajo. RUVb tiene una caja enorme porque mezcla dos escalas de medición distintas (ver la sección de radiación ultravioleta B).
+:::
+
+### Identificación de valores atípicos
+
+```{r eda-029}
+# Identificación de valores atípicos por variable ambiental
+
+outliers_variables <- df %>%
+  group_by(Variable) %>%
+  summarise(
+    Q1 = quantile(Promedio, 0.25, na.rm = TRUE),
+    Q3 = quantile(Promedio, 0.75, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    IQR = Q3 - Q1,
+    Limite_inferior = Q1 - 1.5 * IQR,
+    Limite_superior = Q3 + 1.5 * IQR
+  )
+```
+
+### Resumen de valores atípicos
+
+```{r eda-030}
+# Tabla de valores atípicos por variable ambiental
+
+outliers_variables %>% mutate(across(where(is.numeric), ~round(.x, 2))) %>% knitr::kable() %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:5, border_right = TRUE)
+```
+
+::: {.interpretacion}
+**Interpretación.** Cuando el límite inferior es negativo (CO, NO, NO₂, SO₂, PLiquida) no puede haber atípicos bajos, porque esas variables no toman valores negativos. En esos casos los atípicos son solo valores extremadamente altos.
+:::
+
+## Representatividad temporal de los datos
+
+```{r eda-031}
+# Representatividad temporal por variable ambiental
+
+representatividad_variables <- df %>% group_by(Variable) %>% summarise(Media = mean(`Representatividad Temporal`, na.rm = TRUE), Mediana = median(`Representatividad Temporal`, na.rm = TRUE), Minimo = min(`Representatividad Temporal`, na.rm = TRUE), Maximo = max(`Representatividad Temporal`, na.rm = TRUE), .groups = "drop") %>% arrange(desc(Media))
+
+representatividad_variables %>% mutate(across(where(is.numeric), ~round(.x, 2))) %>% knitr::kable() %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:4, border_right = TRUE)
+```
+
+```{r eda-032}
+# Representatividad temporal promedio por variable
+
+ggplot(representatividad_variables, aes(x = reorder(Variable, Media), y = Media)) + geom_col() + geom_text(aes(label = round(Media, 1)), hjust = -0.1, size = 3.5) + coord_flip() + labs(title = "Representatividad temporal promedio por variable", x = "Variable ambiental", y = "Representatividad temporal (%)") + theme_minimal() + expand_limits(y = max(representatividad_variables$Media) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** Casi todas las variables promedian entre 63 % y 75 % de representatividad: en un registro típico falta cerca de un tercio del año. **TAire y HAire** (sin altura) son la excepción, con alrededor de 24 % y 27 %: sus promedios anuales se basan en pocos meses.
+
+Solo el `r fmt(mean(df[['Representatividad Temporal']] >= 75, na.rm = TRUE) * 100, 1)` % de los registros alcanza el 75 % de cobertura, un umbral comúnmente usado para considerar válido un promedio anual.
+:::
+
+```{r representatividad-imposible}
+# Registros con representatividad imposible (mayor a 100 %)
+sum(df$`Representatividad Temporal` > 100, na.rm = TRUE)
+max(df$`Representatividad Temporal`, na.rm = TRUE)
+```
+
+::: {.precaucion}
+**Precaución.** Una representatividad mayor a 100 % es imposible (no se puede cubrir más que el año completo). Son errores de captura en la fuente; se documentan, pero no se corrigen porque no hay forma de saber el valor real.
+:::
+
+```{r eda-033}
+# Frecuencia de registros por año
+
+frecuencia_años <- df %>% count(Año, sort = FALSE)
+
+frecuencia_años %>% knitr::kable(col.names = c("Año", "Número de registros")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:2, border_right = TRUE)
+```
+
+```{r eda-034}
+# Distribución de registros por año
+
+ggplot(frecuencia_años, aes(x = factor(Año), y = n)) + geom_col() + geom_text(aes(label = n), vjust = -0.3, size = 3.5) + labs(title = "Distribución de registros por año", x = "Año", y = "Número de registros") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) + expand_limits(y = max(frecuencia_años$n) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** Por año, los registros pasan de `r frecuencia_años$n[frecuencia_años$Año == 2011]` en 2011 a `r max(frecuencia_años$n)` en `r frecuencia_años$Año[which.max(frecuencia_años$n)]`. Esta expansión de la red es la razón por la que las tendencias anuales deben leerse con cuidado.
+:::
+
+## Distribución geográfica de las estaciones
+
+```{r eda-035}
+# Distribución geográfica de las estaciones
+
+ubicacion_estaciones <- df %>% distinct(Estación, Latitud, Longitud) %>% arrange(Latitud, Longitud)
+
+ubicacion_estaciones %>% head(20) %>% knitr::kable(col.names = c("Estación", "Latitud", "Longitud")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:3, border_right = TRUE)
+```
+
+::: {.interpretacion}
+**Interpretación.** Las estaciones están en todo el país, desde Pasto (latitud 1,2°) hacia el norte. Algunas aparecen repetidas con coordenadas casi idénticas o con un asterisco en el nombre (`VIVERO LA FLORIDA*`): son la misma estación reportada de dos formas.
+:::
+
+### Distribución por tipo de estación
+
+```{r eda-036}
+# Preparar información de ubicación de las estaciones
+
+ubicacion_estaciones <- df %>% distinct(Estación, `Nombre del Municipio`, `Nombre del Departamento`, Latitud, Longitud)
+
+# Distribución geográfica de las estaciones
+
+library(plotly)
+
+grafico_estaciones <- ggplot(ubicacion_estaciones, aes(x = Longitud, y = Latitud, text = paste0("<b>Estación:</b> ", Estación, "<br><b>Municipio:</b> ", `Nombre del Municipio`, "<br><b>Departamento:</b> ", `Nombre del Departamento`, "<br><b>Latitud:</b> ", round(Latitud, 4), "<br><b>Longitud:</b> ", round(Longitud, 4)))) + geom_point(size = 2, alpha = 0.7) + labs(title = "Distribución geográfica de las estaciones", x = "Longitud", y = "Latitud") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), panel.grid.minor = element_blank())
+
+ggplotly(grafico_estaciones, tooltip = "text")
+```
+
+::: {.interpretacion}
+**Interpretación.** El mapa muestra que las estaciones se concentran en la región Andina (Bogotá, Valle de Aburrá, Cali, Bucaramanga) y en algunos puntos del Caribe. La Amazonía y la Orinoquía casi no tienen estaciones.
+:::
+
+```{r eda-037}
+# Frecuencia de registros por tipo de estación
+
+frecuencia_tipo_estacion <- df %>% count(`Tipo de Estación`, sort = TRUE)
+
+frecuencia_tipo_estacion %>% knitr::kable(col.names = c("Tipo de estación", "Número de registros")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:2, border_right = TRUE)
+```
+
+```{r eda-038}
+# Distribución de registros por tipo de estación
+
+ggplot(frecuencia_tipo_estacion, aes(x = reorder(`Tipo de Estación`, n), y = n)) + geom_col() + geom_text(aes(label = n), hjust = -0.1, size = 3.5) + coord_flip() + labs(title = "Distribución de registros por tipo de estación", x = "Tipo de estación", y = "Número de registros") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) + expand_limits(y = max(frecuencia_tipo_estacion$n) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** El `r fmt(mean(df[['Tipo de Estación']] == 'Fija', na.rm = TRUE) * 100, 0)` % de los registros viene de **estaciones fijas**, que operan de forma continua. Las indicativas son campañas temporales con menos cobertura en el año.
+:::
+
+### Distribución por departamento
+
+```{r eda-039}
+# Frecuencia de registros por departamento
+
+frecuencia_departamentos <- df %>% count(`Nombre del Departamento`, sort = TRUE)
+
+frecuencia_departamentos %>% knitr::kable(col.names = c("Departamento", "Número de registros")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:2, border_right = TRUE)
+```
+
+```{r eda-040, fig.height = 7}
+# Primer grupo de departamentos
+
+departamentos_1 <- frecuencia_departamentos %>% slice(1:24) %>% mutate(`Nombre del Departamento` = reorder(`Nombre del Departamento`, n))
+
+ggplot(departamentos_1, aes(x = `Nombre del Departamento`, y = n)) + geom_col() + geom_text(aes(label = n), hjust = -0.1, size = 3) + coord_flip() + labs(title = "Registros por departamento", subtitle = "Departamentos 1–24", x = "Departamento", y = "Número de registros") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) + expand_limits(y = max(departamentos_1$n) * 1.08)
+```
+
+```{r eda-041, fig.height = 7}
+# Segundo grupo de departamentos
+
+departamentos_2 <- frecuencia_departamentos %>% slice(25:49) %>% mutate(`Nombre del Departamento` = reorder(`Nombre del Departamento`, n))
+
+ggplot(departamentos_2, aes(x = `Nombre del Departamento`, y = n)) + geom_col() + geom_text(aes(label = n), hjust = -0.1, size = 3) + coord_flip() + labs(title = "Registros por departamento", subtitle = "Departamentos 25–49", x = "Departamento", y = "Número de registros") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) + expand_limits(y = max(departamentos_2$n) * 1.08)
+```
+
+::: {.precaucion}
+**Precaución.** En la tabla de departamentos el mismo departamento aparece escrito de varias formas: `BOGOTÁ, D.C.`, `BOGOTA, D.C.` y `Bogotá, D.C.`; `ANTIOQUIA` y `Antioquia`, etc. Por eso el conteo da `r length(unique(df[['Nombre del Departamento']]))` "departamentos". Abajo se normalizan los nombres (sin tildes y en mayúsculas) para obtener el número real.
+:::
+
+```{r departamentos-normalizados, fig.height = 7}
+# Normalizar nombres de departamento y municipio (sin tildes, mayúsculas)
+normalizar <- function(x) stringi::stri_trans_general(x, "Latin-ASCII") %>% toupper() %>% trimws()
+
+df <- df %>% mutate(Departamento_norm = normalizar(`Nombre del Departamento`),
+                    Municipio_norm = normalizar(`Nombre del Municipio`))
+
+cat("Departamentos:", n_distinct(df$`Nombre del Departamento`), "nombres ->", n_distinct(df$Departamento_norm), "reales\n")
+cat("Municipios:", n_distinct(df$`Nombre del Municipio`), "nombres ->", n_distinct(df$Municipio_norm), "reales\n")
+
+df %>% count(Departamento_norm, sort = TRUE) %>%
+  mutate(Departamento_norm = reorder(Departamento_norm, n)) %>%
+  ggplot(aes(x = Departamento_norm, y = n)) + geom_col() +
+  geom_text(aes(label = n), hjust = -0.1, size = 3) + coord_flip() +
+  labs(title = "Registros por departamento", subtitle = "Nombres normalizados",
+       x = "Departamento", y = "Número de registros") +
+  theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16)) +
+  expand_limits(y = max(table(df$Departamento_norm)) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** Al normalizar quedan **`r n_distinct(df$Departamento_norm)` departamentos** y **`r n_distinct(df$Municipio_norm)` municipios**. Antioquia y Bogotá concentran la mitad de los registros, seguidos por Valle del Cauca y Cundinamarca. La Amazonía, la Orinoquía y gran parte del Pacífico casi no tienen monitoreo: los resultados nacionales representan sobre todo a las ciudades andinas.
+:::
+
+### Distribución por municipio
+
+```{r eda-042}
+# Frecuencia de registros por municipio
+
+frecuencia_municipios <- df %>% count(`Nombre del Municipio`, sort = TRUE)
+
+frecuencia_municipios %>% knitr::kable(col.names = c("Municipio", "Número de registros")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:2, border_right = TRUE)
+```
+
+```{r eda-043, fig.height = 7}
+# 24 municipios con mayor número de registros
+
+top_municipios <- frecuencia_municipios %>%
+  slice_max(n, n = 24) %>%
+  mutate(`Nombre del Municipio` = reorder(`Nombre del Municipio`, n))
+
+ggplot(top_municipios, aes(x = `Nombre del Municipio`, y = n)) +
+  geom_col() +
+  geom_text(aes(label = n), hjust = -0.1, size = 3) +
+  coord_flip() +
+  labs(
+    title = "Municipios con mayor número de registros",
+    subtitle = "24 municipios con mayor representación en la base de datos",
+    x = "Municipio",
+    y = "Número de registros"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),
+    plot.subtitle = element_text(size = 11),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  expand_limits(y = max(top_municipios$n) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** Los municipios con más registros son las capitales con redes de monitoreo grandes: Bogotá, Cali, Medellín y Bucaramanga. Aparecen también municipios industriales o mineros como Sogamoso, Nobsa (cementeras y siderurgia) y La Jagua de Ibirico (carbón), donde la vigilancia responde a fuentes de emisión específicas.
+:::
+
+## Análisis específico de contaminantes
+
+*Objetivo específico 1 · evolución de los contaminantes.*
+
+### PM10
+
+```{r eda-044}
+# Filtrar los datos de PM10
+
+pm10 <- df %>%
+  filter(Variable == "PM10")
+```
+
+```{r eda-045}
+# Estadística descriptiva de PM10
+
+estadistica_pm10 <- data.frame(Estadistico = c("Mínimo", "Primer cuartil", "Mediana", "Media", "Tercer cuartil", "Máximo"), Valor = c(min(pm10$Promedio, na.rm = TRUE), quantile(pm10$Promedio, 0.25, na.rm = TRUE), median(pm10$Promedio, na.rm = TRUE), mean(pm10$Promedio, na.rm = TRUE), quantile(pm10$Promedio, 0.75, na.rm = TRUE), max(pm10$Promedio, na.rm = TRUE)))
+
+estadistica_pm10 %>% mutate(Valor = round(Valor, 2)) %>% knitr::kable(col.names = c("Estadístico", "Valor")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:2, border_right = TRUE)
+```
+
+::: {.interpretacion}
+**Interpretación.** PM10 tiene `r fmt(nrow(pm10), 0)` registros. La media (`r fmt(mean(pm10$Promedio), 1)` µg/m³) es algo mayor que la mediana (`r fmt(median(pm10$Promedio), 1)` µg/m³), lo que indica asimetría positiva: algunas estaciones con valores altos, como el máximo de `r fmt(max(pm10$Promedio), 1)` µg/m³, elevan el promedio.
+:::
+
+```{r eda-046}
+# PM10: promedio y número de registros por año
+
+pm10_anual <- pm10 %>% group_by(Año) %>% summarise(Promedio_PM10 = mean(Promedio, na.rm = TRUE), Registros = n(), .groups = "drop")
+
+pm10_anual %>% mutate(Promedio_PM10 = round(Promedio_PM10, 2)) %>% knitr::kable(col.names = c("Año", "Promedio PM10", "Número de registros")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:3, border_right = TRUE)
+```
+
+```{r eda-047}
+# Evolución del promedio anual de PM10
+
+ggplot(pm10_anual, aes(x = Año, y = Promedio_PM10)) + geom_line(linewidth = 1) + geom_point(size = 2.5) + geom_text(aes(label = round(Promedio_PM10, 1)), vjust = -0.8, size = 3.5) + scale_x_continuous(breaks = 2011:2024) + labs(title = "Evolución del promedio anual de PM10", subtitle = "Periodo 2011–2024", x = "Año", y = "Promedio de PM10") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.minor = element_blank()) + expand_limits(y = max(pm10_anual$Promedio_PM10) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** El PM10 se mantuvo cerca de 43–44 µg/m³ entre 2011 y 2016 y desde 2017 baja de forma sostenida hasta `r fmt(anual('PM10', 2024), 1)` µg/m³ en 2024. Es la tendencia más estable de todos los contaminantes.
+
+Como referencia, la Resolución 2254 de 2017 fija un nivel anual de 50 µg/m³ y una meta de 30 µg/m³ a 2030: el promedio nacional estuvo por debajo del nivel vigente todos los años y en 2024 quedó muy cerca de la meta futura. Es solo una referencia, porque el promedio mezcla registros de 1 y 24 horas de exposición.
+:::
+
+```{r eda-048}
+# Filtrar los registros de PM10
+
+pm10 <- df %>%
+  filter(Variable == "PM10")
+
+# Promedio anual de PM10
+
+pm10_anual <- pm10 %>%
+  group_by(Año) %>%
+  summarise(
+    Promedio_PM10 = mean(Promedio, na.rm = TRUE),
+    Registros = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(Año)
+
+# Mostrar tabla
+
+pm10_anual %>%
+  mutate(
+    Promedio_PM10 = round(Promedio_PM10, 2)
+  ) %>%
+  knitr::kable(
+    col.names = c("Año", "Promedio PM10", "Número de registros")
+  ) %>%
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    position = "left"
+  ) %>%
+  kableExtra::column_spec(
+    1:3,
+    border_right = TRUE
+  )
+```
+
+```{r eda-049}
+# Cambio porcentual de PM10 entre 2011 y 2024
+
+PM10_2011 <- pm10_anual$Promedio_PM10[pm10_anual$Año == 2011]
+PM10_2024 <- pm10_anual$Promedio_PM10[pm10_anual$Año == 2024]
+
+cambio_porcentual <- ((PM10_2024 - PM10_2011) / PM10_2011) * 100
+
+tabla_cambio_pm10 <- data.frame(
+  Periodo = "2011-2024",
+  Promedio_2011 = PM10_2011,
+  Promedio_2024 = PM10_2024,
+  Cambio_porcentual = cambio_porcentual
+)
+
+tabla_cambio_pm10 %>%
+  mutate(
+    Promedio_2011 = round(Promedio_2011, 2),
+    Promedio_2024 = round(Promedio_2024, 2),
+    Cambio_porcentual = round(Cambio_porcentual, 2)
+  ) %>%
+  knitr::kable(
+    col.names = c(
+      "Periodo",
+      "Promedio 2011",
+      "Promedio 2024",
+      "Cambio (%)"
+    )
+  ) %>%
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    position = "left"
+  ) %>%
+  kableExtra::column_spec(
+    1:4,
+    border_right = TRUE
+  )
+```
+
+::: {.interpretacion}
+**Interpretación.** Entre 2011 y 2024 el PM10 bajó **`r fmt(abs(cambio('PM10')), 2)` %**.
+:::
+
+### PM2.5
+
+```{r eda-050}
+# Estadística descriptiva de PM2.5
+
+pm25 <- df %>%
+  filter(Variable == "PM2.5")
+
+estadistica_pm25 <- data.frame(
+  Estadistico = c(
+    "Mínimo",
+    "Primer cuartil",
+    "Mediana",
+    "Media",
+    "Tercer cuartil",
+    "Máximo"
+  ),
+  Valor = c(
+    min(pm25$Promedio, na.rm = TRUE),
+    quantile(pm25$Promedio, 0.25, na.rm = TRUE),
+    median(pm25$Promedio, na.rm = TRUE),
+    mean(pm25$Promedio, na.rm = TRUE),
+    quantile(pm25$Promedio, 0.75, na.rm = TRUE),
+    max(pm25$Promedio, na.rm = TRUE)
+  )
+)
+
+estadistica_pm25 %>%
+  mutate(Valor = round(Valor, 2)) %>%
+  knitr::kable(
+    col.names = c("Estadístico", "Valor")
+  ) %>%
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    position = "left"
+  ) %>%
+  kableExtra::column_spec(
+    1:2,
+    border_right = TRUE
+  )
+```
+
+::: {.interpretacion}
+**Interpretación.** El PM2.5 tiene menos registros que el PM10 y valores más bajos, lo esperable porque es la fracción fina del material particulado. La media (`r fmt(mean(pm25$Promedio), 1)` µg/m³) y la mediana (`r fmt(median(pm25$Promedio), 1)` µg/m³) son cercanas.
+:::
+
+```{r eda-051}
+# PM2.5: promedio y número de registros por año
+
+pm25_anual <- pm25 %>% group_by(Año) %>% summarise(Promedio_PM25 = mean(Promedio, na.rm = TRUE), Registros = n(), .groups = "drop")
+
+pm25_anual %>% mutate(Promedio_PM25 = round(Promedio_PM25, 2)) %>% knitr::kable(col.names = c("Año", "Promedio PM2.5", "Número de registros")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:3, border_right = TRUE)
+```
+
+```{r eda-052}
+# Evolución del promedio anual de PM2.5
+
+ggplot(pm25_anual, aes(x = Año, y = Promedio_PM25)) + geom_line(linewidth = 1) + geom_point(size = 2.5) + geom_text(aes(label = round(Promedio_PM25, 1)), vjust = -0.8, size = 3.5) + scale_x_continuous(breaks = 2011:2024) + labs(title = "Evolución del promedio anual de PM2.5", subtitle = "Periodo 2011–2024", x = "Año", y = "Promedio de PM2.5") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.minor = element_blank()) + expand_limits(y = max(pm25_anual$Promedio_PM25) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** El PM2.5 cae con fuerza en 2017, de `r fmt(anual('PM2.5', 2016), 1)` a `r fmt(anual('PM2.5', 2017), 1)` µg/m³. Ese salto coincide con que el número de registros se duplicó (de `r nreg('PM2.5', 2016)` a `r nreg('PM2.5', 2017)`): al entrar estaciones nuevas, posiblemente en zonas menos contaminadas, el promedio puede bajar sin que el aire haya mejorado en las estaciones existentes. Es un **efecto de composición de la red** que este EDA no puede descartar.
+
+En 2023 y 2024 el promedio nacional (`r fmt(anual('PM2.5', 2023), 1)` y `r fmt(anual('PM2.5', 2024), 1)` µg/m³) está por debajo de la meta a 2030 de la Res. 2254/2017 (15 µg/m³).
+:::
+
+```{r eda-053}
+# Cambio porcentual de PM2.5 entre 2011 y 2024
+
+tabla_cambio_pm25 <- data.frame(Periodo = "2011–2024", PM25_2011 = pm25_anual$Promedio_PM25[pm25_anual$Año == 2011], PM25_2024 = pm25_anual$Promedio_PM25[pm25_anual$Año == 2024], Cambio_porcentual = ((pm25_anual$Promedio_PM25[pm25_anual$Año == 2024] - pm25_anual$Promedio_PM25[pm25_anual$Año == 2011]) / pm25_anual$Promedio_PM25[pm25_anual$Año == 2011]) * 100)
+
+tabla_cambio_pm25 %>% mutate(across(where(is.numeric), ~round(.x, 2))) %>% knitr::kable(col.names = c("Periodo", "Promedio 2011", "Promedio 2024", "Cambio (%)")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:4, border_right = TRUE)
+```
+
+::: {.interpretacion}
+**Interpretación.** Entre 2011 y 2024 el PM2.5 bajó **`r fmt(abs(cambio('PM2.5')), 2)` %**.
+:::
+
+### NO₂
+
+```{r eda-054}
+# Estadística descriptiva de NO2
+
+no2 <- df %>% filter(Variable == "NO2")
+
+estadistica_no2 <- data.frame(Estadistico = c("Mínimo", "Primer cuartil", "Mediana", "Media", "Tercer cuartil", "Máximo"), Valor = c(min(no2$Promedio, na.rm = TRUE), quantile(no2$Promedio, 0.25, na.rm = TRUE), median(no2$Promedio, na.rm = TRUE), mean(no2$Promedio, na.rm = TRUE), quantile(no2$Promedio, 0.75, na.rm = TRUE), max(no2$Promedio, na.rm = TRUE)))
+
+estadistica_no2 %>% mutate(Valor = round(Valor, 2)) %>% knitr::kable(col.names = c("Estadístico", "Valor")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:2, border_right = TRUE)
+```
+
+::: {.interpretacion}
+**Interpretación.** El NO₂ tiene solo `r fmt(nrow(no2), 0)` registros, entre 20 y 59 por año. La media y la mediana son prácticamente iguales (`r fmt(mean(no2$Promedio), 1)` y `r fmt(median(no2$Promedio), 1)` µg/m³), una distribución bastante simétrica.
+:::
+
+```{r eda-055}
+# NO2: promedio y número de registros por año
+no2_anual <- no2 %>% group_by(Año) %>% summarise(Promedio_NO2 = mean(Promedio, na.rm = TRUE), Registros = n(), .groups = "drop")
+
+no2_anual %>% mutate(Promedio_NO2 = round(Promedio_NO2, 2)) %>% knitr::kable(col.names = c("Año", "Promedio NO2", "Número de registros")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:3, border_right = TRUE)
+```
+
+```{r eda-056}
+# Evolución del promedio anual de NO2
+
+ggplot(no2_anual, aes(x = Año, y = Promedio_NO2)) + geom_line(linewidth = 1) + geom_point(size = 2.5) + geom_text(aes(label = round(Promedio_NO2, 1)), vjust = -0.8, size = 3.5) + scale_x_continuous(breaks = 2011:2024) + labs(title = "Evolución del promedio anual de NO2", subtitle = "Periodo 2011–2024", x = "Año", y = "Promedio de NO2") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.minor = element_blank()) + expand_limits(y = max(no2_anual$Promedio_NO2) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** El NO₂ bajó con fuerza entre 2011 y 2017 (de `r fmt(anual('NO2', 2011), 1)` a `r fmt(anual('NO2', 2017), 1)` µg/m³), pero desde entonces sube lentamente hasta `r fmt(anual('NO2', 2024), 1)` µg/m³ en 2024. El cambio total esconde ese repunte. El NO₂ proviene sobre todo de la combustión vehicular, así que el repunte podría reflejar el aumento del parque automotor. Todos los valores están muy por debajo del nivel anual vigente (60 µg/m³) y de la meta 2030 (40 µg/m³).
+:::
+
+```{r eda-057}
+tabla_cambio_no2 <- data.frame(Periodo = "2011–2024", NO2_2011 = no2_anual$Promedio_NO2[no2_anual$Año == 2011], NO2_2024 = no2_anual$Promedio_NO2[no2_anual$Año == 2024], Cambio_porcentual = ((no2_anual$Promedio_NO2[no2_anual$Año == 2024] - no2_anual$Promedio_NO2[no2_anual$Año == 2011]) / no2_anual$Promedio_NO2[no2_anual$Año == 2011]) * 100)
+
+tabla_cambio_no2 %>% mutate(across(where(is.numeric), ~round(.x, 2))) %>% knitr::kable(col.names = c("Periodo", "Promedio 2011", "Promedio 2024", "Cambio (%)")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:4, border_right = TRUE)
+```
+
+::: {.interpretacion}
+**Interpretación.** Entre 2011 y 2024 el NO₂ bajó **`r fmt(abs(cambio('NO2')), 2)` %**, pero con el repunte desde 2017 descrito arriba.
+:::
+
+### O₃
+
+```{r eda-058}
+# Estadística descriptiva de O3
+
+o3 <- df %>% filter(Variable == "O3")
+
+estadistica_o3 <- data.frame(Estadistico = c("Mínimo", "Primer cuartil", "Mediana", "Media", "Tercer cuartil", "Máximo"), Valor = c(min(o3$Promedio, na.rm = TRUE), quantile(o3$Promedio, 0.25, na.rm = TRUE), median(o3$Promedio, na.rm = TRUE), mean(o3$Promedio, na.rm = TRUE), quantile(o3$Promedio, 0.75, na.rm = TRUE), max(o3$Promedio, na.rm = TRUE)))
+
+estadistica_o3 %>% mutate(Valor = round(Valor, 2)) %>% knitr::kable(col.names = c("Estadístico", "Valor")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:2, border_right = TRUE)
+```
+
+```{r eda-059}
+# O3: promedio y número de registros por año
+
+o3_anual <- o3 %>% group_by(Año) %>% summarise(Promedio_O3 = mean(Promedio, na.rm = TRUE), Registros = n(), .groups = "drop")
+
+o3_anual %>% mutate(Promedio_O3 = round(Promedio_O3, 2)) %>% knitr::kable(col.names = c("Año", "Promedio O3", "Número de registros")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:3, border_right = TRUE)
+```
+
+```{r eda-060}
+# Evolución del promedio anual de O3
+
+ggplot(o3_anual, aes(x = Año, y = Promedio_O3)) + geom_line(linewidth = 1) + geom_point(size = 2.5) + geom_text(aes(label = round(Promedio_O3, 1)), vjust = -0.8, size = 3.5) + scale_x_continuous(breaks = 2011:2024) + labs(title = "Evolución del promedio anual de O3", subtitle = "Periodo 2011–2024", x = "Año", y = "Promedio de O3") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.minor = element_blank()) + expand_limits(y = max(o3_anual$Promedio_O3) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** El ozono no muestra una tendencia clara: sube hasta `r fmt(anual('O3', 2015), 1)` µg/m³ en 2015, baja hasta `r fmt(anual('O3', 2021), 1)` µg/m³ en 2021 y vuelve a subir en 2024. El O₃ no se emite directamente: se forma en la atmósfera a partir de óxidos de nitrógeno y compuestos orgánicos con la radiación solar. Por eso puede subir aunque bajen otros contaminantes.
+:::
+
+```{r eda-061}
+# Cambio porcentual de O3 entre 2011 y 2024
+
+cambio_o3 <- ((o3_anual$Promedio_O3[o3_anual$Año == 2024] - o3_anual$Promedio_O3[o3_anual$Año == 2011]) / o3_anual$Promedio_O3[o3_anual$Año == 2011]) * 100
+
+# Tabla de cambio porcentual de O3
+
+tabla_cambio_o3 <- data.frame(Periodo = "2011–2024", O3_2011 = o3_anual$Promedio_O3[o3_anual$Año == 2011], O3_2024 = o3_anual$Promedio_O3[o3_anual$Año == 2024], Cambio_porcentual = cambio_o3)
+
+tabla_cambio_o3 %>% mutate(across(where(is.numeric), ~round(.x, 2))) %>% knitr::kable(col.names = c("Periodo", "Promedio 2011", "Promedio 2024", "Cambio (%)")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:4, border_right = TRUE)
+```
+
+::: {.interpretacion}
+**Interpretación.** El ozono es el único contaminante que **aumentó** entre 2011 y 2024 (+`r fmt(cambio('O3'), 1)` %).
+:::
+
+### SO₂
+
+```{r eda-062}
+# Estadística descriptiva de SO2
+
+so2 <- df %>% filter(Variable == "SO2")
+
+estadistica_so2 <- data.frame(Estadistico = c("Mínimo", "Primer cuartil", "Mediana", "Media", "Tercer cuartil", "Máximo"), Valor = c(min(so2$Promedio, na.rm = TRUE), quantile(so2$Promedio, 0.25, na.rm = TRUE), median(so2$Promedio, na.rm = TRUE), mean(so2$Promedio, na.rm = TRUE), quantile(so2$Promedio, 0.75, na.rm = TRUE), max(so2$Promedio, na.rm = TRUE)))
+
+estadistica_so2 %>% mutate(Valor = round(Valor, 2)) %>% knitr::kable(col.names = c("Estadístico", "Valor")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:2, border_right = TRUE)
+```
+
+::: {.interpretacion}
+**Interpretación.** El SO₂ es muy asimétrico: la media (`r fmt(mean(so2$Promedio), 1)` µg/m³) es mucho mayor que la mediana (`r fmt(median(so2$Promedio), 1)` µg/m³) y el máximo llega a `r fmt(max(so2$Promedio), 1)` µg/m³. Unas pocas estaciones cercanas a fuentes industriales concentran los valores altos.
+:::
+
+```{r eda-063}
+# SO2: promedio y número de registros por año
+
+so2_anual <- so2 %>% group_by(Año) %>% summarise(Promedio_SO2 = mean(Promedio, na.rm = TRUE), Registros = n(), .groups = "drop")
+
+so2_anual %>% mutate(Promedio_SO2 = round(Promedio_SO2, 2)) %>% knitr::kable(col.names = c("Año", "Promedio SO2", "Número de registros")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:3, border_right = TRUE)
+```
+
+```{r eda-064}
+# Evolución del promedio anual de SO2
+
+ggplot(so2_anual, aes(x = Año, y = Promedio_SO2)) + geom_line(linewidth = 1) + geom_point(size = 2.5) + geom_text(aes(label = round(Promedio_SO2, 1)), vjust = -0.8, size = 3.5) + scale_x_continuous(breaks = 2011:2024) + labs(title = "Evolución del promedio anual de SO2", subtitle = "Periodo 2011–2024", x = "Año", y = "Promedio de SO2") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.minor = element_blank()) + expand_limits(y = max(so2_anual$Promedio_SO2) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** La serie del SO₂ es muy irregular: baja a `r fmt(anual('SO2', 2014), 1)` µg/m³ en 2014 y sube a `r fmt(anual('SO2', 2016), 1)` µg/m³ en 2016. Ese comportamiento de sierra sugiere que el promedio depende de pocas estaciones industriales que entran y salen de la red.
+:::
+
+```{r eda-065}
+# Porcentaje de cambio de SO2 entre 2011 y 2024
+
+cambio_so2 <- ((so2_anual$Promedio_SO2[so2_anual$Año == 2024] - so2_anual$Promedio_SO2[so2_anual$Año == 2011]) / so2_anual$Promedio_SO2[so2_anual$Año == 2011]) * 100
+
+# Tabla de cambio porcentual de SO2
+
+tabla_cambio_so2 <- data.frame(Periodo = "2011–2024", SO2_2011 = so2_anual$Promedio_SO2[so2_anual$Año == 2011], SO2_2024 = so2_anual$Promedio_SO2[so2_anual$Año == 2024], Cambio_porcentual = cambio_so2)
+
+tabla_cambio_so2 %>% mutate(across(where(is.numeric), ~round(.x, 2))) %>% knitr::kable(col.names = c("Periodo", "Promedio 2011", "Promedio 2024", "Cambio (%)")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:4, border_right = TRUE)
+```
+
+::: {.interpretacion}
+**Interpretación.** La caída de **`r fmt(abs(cambio('SO2')), 2)` %** es la mayor de los cinco contaminantes, pero por la irregularidad de la serie no debe leerse como una mejora clara y sostenida.
+:::
+
+### Comparación del cambio porcentual de los contaminantes
+
+```{r eda-066}
+comparacion_contaminantes <- data.frame(Contaminante = c("PM10", "PM2.5", "NO2", "O3", "SO2"), Promedio_2011 = c(pm10_anual$Promedio_PM10[pm10_anual$Año == 2011], pm25_anual$Promedio_PM25[pm25_anual$Año == 2011], no2_anual$Promedio_NO2[no2_anual$Año == 2011], o3_anual$Promedio_O3[o3_anual$Año == 2011], so2_anual$Promedio_SO2[so2_anual$Año == 2011]), Promedio_2024 = c(pm10_anual$Promedio_PM10[pm10_anual$Año == 2024], pm25_anual$Promedio_PM25[pm25_anual$Año == 2024], no2_anual$Promedio_NO2[no2_anual$Año == 2024], o3_anual$Promedio_O3[o3_anual$Año == 2024], so2_anual$Promedio_SO2[so2_anual$Año == 2024]))
+
+comparacion_contaminantes <- comparacion_contaminantes %>% mutate(Cambio_porcentual = ((Promedio_2024 - Promedio_2011) / Promedio_2011) * 100)
+
+comparacion_contaminantes %>% mutate(across(where(is.numeric), ~round(.x, 2))) %>% knitr::kable(col.names = c("Contaminante", "Promedio 2011", "Promedio 2024", "Cambio (%)")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:4, border_right = TRUE)
+```
+
+```{r eda-067}
+# Comparación del cambio porcentual de los principales contaminantes
+
+ggplot(comparacion_contaminantes, aes(x = reorder(Contaminante, Cambio_porcentual), y = Cambio_porcentual)) + geom_col() + geom_text(aes(label = paste0(round(Cambio_porcentual, 1), "%")), hjust = ifelse(comparacion_contaminantes$Cambio_porcentual < 0, 1.1, -0.1), size = 3.5) + coord_flip() + labs(title = "Cambio porcentual de los principales contaminantes", subtitle = "Variación del promedio entre 2011 y 2024", x = "Contaminante", y = "Cambio porcentual (%)") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), panel.grid.major.y = element_blank(), panel.grid.minor = element_blank()) + expand_limits(y = range(comparacion_contaminantes$Cambio_porcentual) * 1.15)
+```
+
+::: {.interpretacion}
+**Interpretación.** Cuatro de los cinco contaminantes bajaron entre 2011 y 2024, y el material particulado, el más relevante para la salud, se redujo cerca de 30 %. El ozono es la excepción.
+
+El tamaño del cambio no indica qué tan confiable es: el SO₂ tiene la mayor caída pero la serie más irregular, y el PM10 una caída menor pero la tendencia más estable.
+:::
+
+## Análisis de variables meteorológicas
+
+*Objetivo específico 1 · variables meteorológicas.*
+
+### Temperatura del aire (TAire)
+
+```{r eda-068}
+# Estadística descriptiva de TAire
+
+taire <- df %>% filter(Variable == "TAire")
+
+estadistica_taire <- data.frame(Estadistico = c("Mínimo", "Primer cuartil", "Mediana", "Media", "Tercer cuartil", "Máximo"), Valor = c(min(taire$Promedio, na.rm = TRUE), quantile(taire$Promedio, 0.25, na.rm = TRUE), median(taire$Promedio, na.rm = TRUE), mean(taire$Promedio, na.rm = TRUE), quantile(taire$Promedio, 0.75, na.rm = TRUE), max(taire$Promedio, na.rm = TRUE)))
+
+estadistica_taire %>% mutate(Valor = round(Valor, 2)) %>% knitr::kable(col.names = c("Estadístico", "Valor")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:2, border_right = TRUE)
+```
+
+```{r eda-069}
+# TAire: promedio y número de registros por año
+
+taire_anual <- taire %>% group_by(Año) %>% summarise(Promedio_TAire = mean(Promedio, na.rm = TRUE), Registros = n(), .groups = "drop")
+
+taire_anual %>% mutate(Promedio_TAire = round(Promedio_TAire, 2)) %>% knitr::kable(col.names = c("Año", "Promedio TAire", "Número de registros")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:3, border_right = TRUE)
+```
+
+::: {.interpretacion}
+**Interpretación.** TAire solo tiene datos en `r nrow(taire_anual)` años y `r nrow(taire)` registros; algunos años tienen apenas 2.
+:::
+
+```{r eda-070}
+# Evolución del promedio anual de TAire
+
+ggplot(taire_anual, aes(x = Año, y = Promedio_TAire)) + geom_line(linewidth = 1) + geom_point(size = 2.5) + geom_text(aes(label = round(Promedio_TAire, 1)), vjust = -0.8, size = 3.5) + scale_x_continuous(breaks = 2011:2019) + labs(title = "Evolución del promedio anual de temperatura del aire", subtitle = "Periodo 2011–2019", x = "Año", y = "Promedio de temperatura del aire (°C)") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.minor = element_blank()) + expand_limits(y = max(taire_anual$Promedio_TAire) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** La subida de `r fmt(anual('TAire', 2011), 1)` °C a `r fmt(anual('TAire', 2019), 1)` °C no es un cambio climático plausible en 8 años: refleja que cambiaron las estaciones que reportan (una estación en tierra caliente sube el promedio). TAire2 y TAire10 tienen muchos más registros y son mejores variables para estudiar la temperatura.
+:::
+
+### Humedad relativa del aire (HAire)
+
+```{r eda-071}
+# Estadística descriptiva de HAire
+
+haire <- df %>% filter(Variable == "HAire")
+
+estadistica_haire <- data.frame(Estadistico = c("Mínimo", "Primer cuartil", "Mediana", "Media", "Tercer cuartil", "Máximo"), Valor = c(min(haire$Promedio, na.rm = TRUE), quantile(haire$Promedio, 0.25, na.rm = TRUE), median(haire$Promedio, na.rm = TRUE), mean(haire$Promedio, na.rm = TRUE), quantile(haire$Promedio, 0.75, na.rm = TRUE), max(haire$Promedio, na.rm = TRUE)))
+
+estadistica_haire %>% mutate(Valor = round(Valor, 2)) %>% knitr::kable(col.names = c("Estadístico", "Valor")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:2, border_right = TRUE)
+```
+
+```{r eda-072}
+# HAire: promedio y número de registros por año
+
+haire_anual <- haire %>% group_by(Año) %>% summarise(Promedio_HAire = mean(Promedio, na.rm = TRUE), Registros = n(), .groups = "drop")
+
+haire_anual %>% mutate(Promedio_HAire = round(Promedio_HAire, 2)) %>% knitr::kable(col.names = c("Año", "Promedio HAire", "Número de registros")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:3, border_right = TRUE)
+```
+
+```{r eda-073}
+# Evolución del promedio anual de HAire
+
+ggplot(haire_anual, aes(x = Año, y = Promedio_HAire)) + geom_line(linewidth = 1) + geom_point(size = 2.5) + geom_text(aes(label = round(Promedio_HAire, 1)), vjust = -0.8, size = 3.5) + scale_x_continuous(breaks = sort(unique(haire_anual$Año))) + labs(title = "Evolución del promedio anual de humedad del aire", subtitle = "Años con registros disponibles", x = "Año", y = "Promedio de humedad del aire") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.minor = element_blank()) + expand_limits(y = max(haire_anual$Promedio_HAire) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** La humedad relativa oscila entre 62 % y 73 % sin una tendencia clara. Con solo `r nrow(haire_anual)` años y `r nrow(haire)` registros, y baja representatividad, sus promedios anuales son poco confiables.
+:::
+
+### Velocidad del viento (VViento)
+
+```{r eda-074}
+# Estadística descriptiva de VViento
+
+vviento <- df %>% filter(Variable == "VViento")
+
+estadistica_vviento <- data.frame(Estadistico = c("Mínimo", "Primer cuartil", "Mediana", "Media", "Tercer cuartil", "Máximo"), Valor = c(min(vviento$Promedio, na.rm = TRUE), quantile(vviento$Promedio, 0.25, na.rm = TRUE), median(vviento$Promedio, na.rm = TRUE), mean(vviento$Promedio, na.rm = TRUE), quantile(vviento$Promedio, 0.75, na.rm = TRUE), max(vviento$Promedio, na.rm = TRUE)))
+
+estadistica_vviento %>% mutate(Valor = round(Valor, 2)) %>% knitr::kable(col.names = c("Estadístico", "Valor")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:2, border_right = TRUE)
+```
+
+```{r eda-075}
+# VViento: promedio y número de registros por año
+
+vviento_anual <- vviento %>% group_by(Año) %>% summarise(Promedio_VViento = mean(Promedio, na.rm = TRUE), Registros = n(), .groups = "drop")
+
+vviento_anual %>% mutate(Promedio_VViento = round(Promedio_VViento, 2)) %>% knitr::kable(col.names = c("Año", "Promedio VViento", "Número de registros")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:3, border_right = TRUE)
+```
+
+```{r eda-076}
+# Evolución del promedio anual de VViento
+
+ggplot(vviento_anual, aes(x = Año, y = Promedio_VViento)) + geom_line(linewidth = 1) + geom_point(size = 2.5) + geom_text(aes(label = round(Promedio_VViento, 1)), vjust = -0.8, size = 3.5) + scale_x_continuous(breaks = sort(unique(vviento_anual$Año))) + labs(title = "Evolución del promedio anual de velocidad del viento", subtitle = "Años con registros disponibles", x = "Año", y = "Velocidad del viento (m/s)") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.minor = element_blank()) + expand_limits(y = max(vviento_anual$Promedio_VViento, na.rm = TRUE) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** La velocidad del viento es baja en todo el periodo (1,2–1,7 m/s), en el rango de vientos débiles. Con poco viento los contaminantes se dispersan menos, sobre todo en valles cerrados como el Aburrá, donde está buena parte de las estaciones.
+:::
+
+### Dirección del viento (DViento)
+
+```{r eda-077}
+# Estadística descriptiva de DViento
+
+dviento <- df %>% filter(Variable == "DViento")
+
+estadistica_dviento <- data.frame(Estadistico = c("Mínimo", "Primer cuartil", "Mediana", "Máximo"), Valor = c(min(dviento$Promedio, na.rm = TRUE), quantile(dviento$Promedio, 0.25, na.rm = TRUE), median(dviento$Promedio, na.rm = TRUE), max(dviento$Promedio, na.rm = TRUE)))
+
+estadistica_dviento %>% mutate(Valor = round(Valor, 2)) %>% knitr::kable(col.names = c("Estadístico", "Valor")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:2, border_right = TRUE)
+```
+
+::: {.interpretacion}
+**Interpretación.** La dirección del viento se mide en grados (0°–360°) y es una variable **circular**: el promedio aritmético de 350° y 10° da 180° (sur), cuando ambos vientos vienen del norte. Por eso sus estadísticos descriptivos no tienen sentido físico y debería analizarse con estadística circular o una rosa de los vientos.
+:::
+
+### Presión atmosférica (P)
+
+```{r eda-078}
+# Estadística descriptiva de P
+
+presion <- df %>% filter(Variable == "P")
+
+estadistica_presion <- data.frame(Estadistico = c("Mínimo", "Primer cuartil", "Mediana", "Media", "Tercer cuartil", "Máximo"), Valor = c(min(presion$Promedio, na.rm = TRUE), quantile(presion$Promedio, 0.25, na.rm = TRUE), median(presion$Promedio, na.rm = TRUE), mean(presion$Promedio, na.rm = TRUE), quantile(presion$Promedio, 0.75, na.rm = TRUE), max(presion$Promedio, na.rm = TRUE)))
+
+estadistica_presion %>% mutate(Valor = round(Valor, 2)) %>% knitr::kable(col.names = c("Estadístico", "Valor")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:2, border_right = TRUE)
+```
+
+```{r eda-079}
+# P: promedio y número de registros por año
+
+presion_anual <- presion %>% group_by(Año) %>% summarise(Promedio_P = mean(Promedio, na.rm = TRUE), Registros = n(), .groups = "drop")
+
+presion_anual %>% mutate(Promedio_P = round(Promedio_P, 2)) %>% knitr::kable(col.names = c("Año", "Promedio de presión", "Número de registros")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:3, border_right = TRUE)
+```
+
+```{r eda-080}
+# Evolución del promedio anual de presión atmosférica
+
+ggplot(presion_anual, aes(x = Año, y = Promedio_P)) + geom_line(linewidth = 1) + geom_point(size = 2.5) + geom_text(aes(label = round(Promedio_P, 1)), vjust = -0.8, size = 3.5) + scale_x_continuous(breaks = sort(unique(presion_anual$Año))) + labs(title = "Evolución del promedio anual de presión atmosférica", subtitle = "Años con registros disponibles", x = "Año", y = "Presión atmosférica (hPa)") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.minor = element_blank()) + expand_limits(y = max(presion_anual$Promedio_P, na.rm = TRUE) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** La presión salta de unos 635 mmHg (2011–2014) a `r fmt(anual('P', 2018), 1)` mmHg en 2018. La presión a nivel del mar es 760 mmHg y en Bogotá cerca de 560 mmHg, así que un promedio superior a 800 mmHg es **físicamente imposible**. El siguiente chunk revela la causa.
+:::
+
+```{r presion-sospechosa}
+# Registros de presión por encima de 800 mmHg
+sospechosos <- presion %>% filter(Promedio > 800)
+cat("Registros > 800 mmHg:", nrow(sospechosos), "de", nrow(presion), "\n")
+sospechosos %>% count(`Nombre del Municipio`, sort = TRUE) %>% head(6)
+```
+
+::: {.precaucion}
+**Precaución.** Hay registros de más de 800 mmHg en Cali y Medellín, ciudades a 1.000–1.500 m de altitud, donde la presión real ronda 640–680 mmHg. Los valores cercanos a 1.010 corresponden a **hectopascales (hPa)** etiquetados como mmHg. Es un error de unidades: esta variable no se puede interpretar ni correlacionar sin corregirlo.
+:::
+
+### Precipitación líquida (PLiquida)
+
+```{r eda-081}
+# Estadística descriptiva de PLiquida
+
+pliquida <- df %>% filter(Variable == "PLiquida")
+
+estadistica_pliquida <- data.frame(Estadistico = c("Mínimo", "Primer cuartil", "Mediana", "Media", "Tercer cuartil", "Máximo"), Valor = c(min(pliquida$Promedio, na.rm = TRUE), quantile(pliquida$Promedio, 0.25, na.rm = TRUE), median(pliquida$Promedio, na.rm = TRUE), mean(pliquida$Promedio, na.rm = TRUE), quantile(pliquida$Promedio, 0.75, na.rm = TRUE), max(pliquida$Promedio, na.rm = TRUE)))
+
+estadistica_pliquida %>% mutate(Valor = round(Valor, 2)) %>% knitr::kable(col.names = c("Estadístico", "Valor")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:2, border_right = TRUE)
+```
+
+```{r eda-082}
+# PLiquida: promedio y número de registros por año
+
+pliquida_anual <- pliquida %>% group_by(Año) %>% summarise(Promedio_PLiquida = mean(Promedio, na.rm = TRUE), Registros = n(), .groups = "drop")
+
+pliquida_anual %>% mutate(Promedio_PLiquida = round(Promedio_PLiquida, 2)) %>% knitr::kable(col.names = c("Año", "Promedio de precipitación", "Número de registros")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:3, border_right = TRUE)
+```
+
+```{r eda-083}
+# Evolución del promedio anual de PLiquida
+
+ggplot(pliquida_anual, aes(x = Año, y = Promedio_PLiquida)) + geom_line(linewidth = 1) + geom_point(size = 2.5) + geom_text(aes(label = round(Promedio_PLiquida, 1)), vjust = -0.8, size = 3.5) + scale_x_continuous(breaks = sort(unique(pliquida_anual$Año))) + labs(title = "Evolución del promedio anual de precipitación líquida", subtitle = "Años con registros disponibles", x = "Año", y = "Precipitación líquida (mm)") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.minor = element_blank()) + expand_limits(y = max(pliquida_anual$Promedio_PLiquida, na.rm = TRUE) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** La precipitación promedio está entre 2 y 7 mm en casi todos los años, pero 2017 (`r fmt(anual('PLiquida', 2017), 1)` mm) y 2019 (`r fmt(anual('PLiquida', 2019), 1)` mm) se disparan por unos pocos valores extremos. Probablemente son acumulados reportados como promedios. Para esta variable, la mediana es más representativa que la media.
+:::
+
+### Radiación global (RGlobal)
+
+```{r eda-084}
+# Estadística descriptiva de RGlobal
+
+rglobal <- df %>% filter(Variable == "RGlobal")
+
+estadistica_rglobal <- data.frame(Estadistico = c("Mínimo", "Primer cuartil", "Mediana", "Media", "Tercer cuartil", "Máximo"), Valor = c(min(rglobal$Promedio, na.rm = TRUE), quantile(rglobal$Promedio, 0.25, na.rm = TRUE), median(rglobal$Promedio, na.rm = TRUE), mean(rglobal$Promedio, na.rm = TRUE), quantile(rglobal$Promedio, 0.75, na.rm = TRUE), max(rglobal$Promedio, na.rm = TRUE)))
+
+estadistica_rglobal %>% mutate(Valor = round(Valor, 2)) %>% knitr::kable(col.names = c("Estadístico", "Valor")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:2, border_right = TRUE)
+```
+
+```{r eda-085}
+# RGlobal: promedio y número de registros por año
+rglobal_anual <- rglobal %>% group_by(Año) %>% summarise(Promedio_RGlobal = mean(Promedio, na.rm = TRUE), Registros = n(), .groups = "drop")
+rglobal_anual %>% mutate(Promedio_RGlobal = round(Promedio_RGlobal, 2)) %>% knitr::kable(col.names = c("Año", "Promedio RGlobal", "Número de registros")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:3, border_right = TRUE)
+```
+
+```{r eda-086}
+# Evolución del promedio anual de RGlobal
+ggplot(rglobal_anual, aes(x = Año, y = Promedio_RGlobal)) + geom_line(linewidth = 1) + geom_point(size = 2.5) + geom_text(aes(label = round(Promedio_RGlobal, 1)), vjust = -0.8, size = 3.5) + scale_x_continuous(breaks = sort(unique(rglobal_anual$Año))) + labs(title = "Evolución del promedio anual de radiación global", subtitle = "Años con registros disponibles", x = "Año", y = "Radiación global (W/m²)") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.minor = element_blank()) + expand_limits(y = max(rglobal_anual$Promedio_RGlobal, na.rm = TRUE) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** La radiación global es estable, entre 165 y 199 W/m², con un leve aumento hasta 2020. Es coherente con la ubicación ecuatorial del país, donde la radiación varía poco a lo largo del año.
+:::
+
+### Radiación ultravioleta B (RUVb)
+
+```{r eda-087}
+# Estadística descriptiva de RUVb
+ruvb <- df %>% filter(Variable == "RUVb")
+estadistica_ruvb <- data.frame(Estadistico = c("Mínimo", "Primer cuartil", "Mediana", "Media", "Tercer cuartil", "Máximo"), Valor = c(min(ruvb$Promedio, na.rm = TRUE), quantile(ruvb$Promedio, 0.25, na.rm = TRUE), median(ruvb$Promedio, na.rm = TRUE), mean(ruvb$Promedio, na.rm = TRUE), quantile(ruvb$Promedio, 0.75, na.rm = TRUE), max(ruvb$Promedio, na.rm = TRUE)))
+estadistica_ruvb %>% mutate(Valor = round(Valor, 2)) %>% knitr::kable(col.names = c("Estadístico", "Valor")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:2, border_right = TRUE)
+```
+
+```{r eda-088}
+# RUVb: promedio y número de registros por año
+ruvb_anual <- ruvb %>% group_by(Año) %>% summarise(Promedio_RUVb = mean(Promedio, na.rm = TRUE), Registros = n(), .groups = "drop")
+ruvb_anual %>% mutate(Promedio_RUVb = round(Promedio_RUVb, 2)) %>% knitr::kable(col.names = c("Año", "Promedio RUVb", "Número de registros")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:3, border_right = TRUE)
+```
+
+```{r eda-089}
+# Evolución del promedio anual de RUVb
+ggplot(ruvb_anual, aes(x = Año, y = Promedio_RUVb)) + geom_line(linewidth = 1) + geom_point(size = 2.5) + geom_text(aes(label = round(Promedio_RUVb, 1)), vjust = -0.8, size = 3.5) + scale_x_continuous(breaks = sort(unique(ruvb_anual$Año))) + labs(title = "Evolución del promedio anual de radiación UV-B", subtitle = "Años con registros disponibles", x = "Año", y = "Radiación UV-B") + theme_minimal() + theme(plot.title = element_text(face = "bold", size = 16), plot.subtitle = element_text(size = 11), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.minor = element_blank()) + expand_limits(y = max(ruvb_anual$Promedio_RUVb, na.rm = TRUE) * 1.08)
+```
+
+::: {.interpretacion}
+**Interpretación.** La radiación UV-B pasa de `r fmt(anual('RUVb', 2011), 1)` (2011–2014) a valores entre 130 y 180 desde 2019. Un cambio así no es atmosférico; el siguiente chunk muestra la causa.
+:::
+
+```{r ruvb-autoridades}
+# Autoridades que reportan RUVb cada año
+ruvb %>% group_by(Año) %>% summarise(Autoridades = paste(unique(`Autoridad Ambiental`), collapse = ", "))
+```
+
+::: {.precaucion}
+**Precaución.** Hasta 2014 la RUVb solo la reportaba la SDA (Bogotá); desde 2017 la reportan otras autoridades (CDMB, Corpoboyacá, CRC) con otra escala. La serie **no es comparable** entre los dos periodos, y cualquier correlación con RUVb será un artefacto de este cambio.
+:::
+
+## Análisis de correlaciones
+
+*Objetivo específico 1 · asociaciones entre variables.*
+
+### Preparación de los datos
+
+```{r eda-090}
+# Preparar datos para análisis de correlación
+datos_correlacion <- df %>% group_by(Año, Variable) %>% summarise(Promedio = mean(Promedio, na.rm = TRUE), .groups = "drop") %>% tidyr::pivot_wider(names_from = Variable, values_from = Promedio)
+```
+
+::: {.interpretacion}
+**Interpretación.** Para correlacionar variables que se miden en estaciones distintas, se calcula el promedio anual nacional de cada una. Cada variable queda reducida a **máximo 14 puntos** (uno por año), y algunas tienen menos (TAire 6, HAire 7). Con tan pocos puntos, un solo año atípico puede cambiar mucho el coeficiente.
+:::
+
+### Matriz de correlaciones
+
+```{r eda-091}
+# Matriz de correlación entre contaminantes y variables meteorológicas
+variables_eda <- c("PM10", "PM2.5", "NO2", "SO2", "O3", "TAire", "HAire", "VViento", "P", "PLiquida", "RGlobal", "RUVb")
+matriz_correlacion <- datos_correlacion %>% select(any_of(variables_eda)) %>% cor(use = "pairwise.complete.obs")
+round(matriz_correlacion, 2)
+```
+
+```{r eda-092}
+# Mapa de calor de correlaciones por Pearsonn
+
+matriz_correlacion %>% corrplot::corrplot(method = "color", type = "upper", order = "hclust", addCoef.col = "black", tl.col = "black", tl.srt = 45, number.cex = 0.7, diag = FALSE)
+```
+
+::: {.interpretacion}
+**Interpretación.** El mapa de calor ordena las variables por agrupamiento jerárquico. Los contaminantes (PM10, PM2.5, O₃, NO₂) tienden a correlacionarse positivamente entre sí y con la velocidad del viento y la humedad, mientras que la temperatura, la radiación y la presión se relacionan en general de forma negativa con ellos.
+
+- **Relación robusta:** PM10–PM2.5 (r = `r fmt(matriz_correlacion['PM10', 'PM2.5'], 2)`, 14 años). El PM2.5 es una fracción del PM10 y ambos comparten fuentes (tráfico, industria, polvo resuspendido). Es la única relación fuerte sustentada por la serie completa y sin problemas de datos.
+- **Plausibles pero frágiles:** TAire con PM10 (`r fmt(matriz_correlacion['TAire', 'PM10'], 2)`) y con NO₂ (`r fmt(matriz_correlacion['TAire', 'NO2'], 2)`). Más temperatura favorece la mezcla vertical y la dispersión, pero estos valores se basan en solo 6 años y en una variable con baja representatividad.
+- **Espurias:** las de RUVb (con PM10 `r fmt(matriz_correlacion['RUVb', 'PM10'], 2)`, con TAire `r fmt(matriz_correlacion['RUVb', 'TAire'], 2)`) y las de P, por el cambio de escala y el error de unidades.
+- **Con interés físico:** NO₂–RGlobal (`r fmt(matriz_correlacion['NO2', 'RGlobal'], 2)`, 12 años). La radiación solar descompone el NO₂ (fotólisis) y genera ozono, lo que es coherente con la relación negativa.
+
+Una correlación alta no implica causalidad.
+:::
+
+### Tabla de correlaciones y fuerza de asociación
+
+```{r eda-093}
+correlaciones_todas <- datos_correlacion %>%
+  select(where(is.numeric)) %>%
+  cor(use = "complete.obs") %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column("Variable1") %>%
+  tidyr::pivot_longer(
+    cols = -Variable1,
+    names_to = "Variable2",
+    values_to = "Correlacion"
+  ) %>%
+  filter(Variable1 != Variable2) %>%
+  mutate(
+    Relacion = paste(Variable1, "vs.", Variable2),
+    Fuerza = case_when(
+      abs(Correlacion) >= 0.80 ~ "Muy fuerte",
+      abs(Correlacion) >= 0.60 ~ "Fuerte",
+      abs(Correlacion) >= 0.40 ~ "Moderada",
+      abs(Correlacion) >= 0.20 ~ "Débil",
+      TRUE ~ "Muy débil"
+    )
+  ) %>%
+  select(Relacion, Correlacion, Fuerza) %>%
+  distinct(Relacion, .keep_all = TRUE)
+```
+
+```{r eda-094}
+# Tabla completa de correlaciones con fuerza y color
+
+correlaciones_todas %>%
+  mutate(Correlacion = round(Correlacion, 2)) %>%
+  knitr::kable(
+    col.names = c("Relación", "Coeficiente de correlación", "Fuerza")
+  ) %>%
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    position = "left"
+  ) %>%
+  kableExtra::column_spec(
+    2,
+    background = sapply(correlaciones_todas$Correlacion, function(x) {
+      if (x >= 0.80) "#81C784"
+      else if (x >= 0.60) "#A5D6A7"
+      else if (x >= 0.40) "#FFF59D"
+      else if (x >= 0.20) "#FFE0B2"
+      else if (x <= -0.80) "#E57373"
+      else if (x <= -0.60) "#EF9A9A"
+      else if (x <= -0.40) "#FFCC80"
+      else if (x <= -0.20) "#FFE0B2"
+      else "#E0E0E0"
+    }),
+    color = "black"
+  ) %>%
+  kableExtra::column_spec(
+    3,
+    background = sapply(correlaciones_todas$Correlacion, function(x) {
+      if (x >= 0.80) "#81C784"
+      else if (x >= 0.60) "#A5D6A7"
+      else if (x >= 0.40) "#FFF59D"
+      else if (x >= 0.20) "#FFE0B2"
+      else if (x <= -0.80) "#E57373"
+      else if (x <= -0.60) "#EF9A9A"
+      else if (x <= -0.40) "#FFCC80"
+      else if (x <= -0.20) "#FFE0B2"
+      else "#E0E0E0"
+    }),
+    color = "black"
+  ) %>%
+  kableExtra::column_spec(
+    1:3,
+    border_right = TRUE
+  )
+```
+
+::: {.interpretacion}
+**Interpretación.** Esta tabla usa `cor(use = "complete.obs")` sobre todas las variables a la vez, así que solo conserva los años con dato en **todas**: `r paste(datos_correlacion$Año[complete.cases(datos_correlacion)], collapse = ', ')`. Por eso sus valores difieren de la matriz anterior, que usa pares completos. Con tan pocos puntos, una correlación de 0,8 puede aparecer por azar.
+
+Las filas con `Año` miden tendencia: los contaminantes como PM10 y NO₂ tienen correlaciones negativas con el año (bajan con el tiempo), mientras que P y RGlobal tienen correlaciones positivas. En el caso de P es otra vez el error de unidades.
+:::
+
+## Análisis de valores atípicos
+
+*Objetivo específico 1 · valores atípicos.*
+
+```{r eda-095}
+# Detección de valores atípicos de PM10 y PM2.5
+
+outliers_pm <- data.frame(
+  Variable = c("PM10", "PM2.5"),
+  Q1 = c(
+    quantile(pm10$Promedio, 0.25, na.rm = TRUE),
+    quantile(pm25$Promedio, 0.25, na.rm = TRUE)
+  ),
+  Q3 = c(
+    quantile(pm10$Promedio, 0.75, na.rm = TRUE),
+    quantile(pm25$Promedio, 0.75, na.rm = TRUE)
+  )
+) %>%
+  mutate(
+    Rango_IQR = Q3 - Q1,
+    Limite_inferior = Q1 - 1.5 * Rango_IQR,
+    Limite_superior = Q3 + 1.5 * Rango_IQR
+  ) %>%
+  mutate(
+    Q1 = round(Q1, 2),
+    Q3 = round(Q3, 2),
+    Rango_IQR = round(Rango_IQR, 2),
+    Limite_inferior = round(Limite_inferior, 2),
+    Limite_superior = round(Limite_superior, 2)
+  )
+
+outliers_pm %>%
+  knitr::kable(
+    col.names = c(
+      "Variable",
+      "Primer cuartil",
+      "Tercer cuartil",
+      "Rango IQR",
+      "Límite inferior",
+      "Límite superior"
+    )
+  ) %>%
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    position = "left"
+  ) %>%
+  kableExtra::column_spec(
+    1:6,
+    border_right = TRUE
+  )
+```
+
+::: {.interpretacion}
+**Interpretación.** Para PM10 son atípicos los valores por encima de `r outliers_pm$Limite_superior[1]` µg/m³, y para PM2.5 los que superan `r outliers_pm$Limite_superior[2]` µg/m³. Los límites inferiores son prácticamente cero, así que no hay atípicos bajos.
+:::
+
+### Valores atípicos de PM10
+
+```{r eda-096}
+# Boxplot de PM10
+
+ggplot(pm10, aes(y = Promedio)) +
+  geom_boxplot() +
+  labs(
+    title = "Distribución y valores atípicos de PM10",
+    y = "Concentración de PM10",
+    x = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),
+    axis.text = element_text(size = 11)
+  )
+```
+
+::: {.interpretacion}
+**Interpretación.** PM10 tiene `r sum(pm10$Promedio > outliers_pm$Limite_superior[1])` registros atípicos, todos por encima de la caja. Los más altos están en Bogotá (estación Bolivia, 2012) y en zonas industriales como Yumbo y Ráquira.
+:::
+
+### Valores atípicos de PM2.5
+
+```{r eda-097}
+# Boxplot de PM2.5
+
+ggplot(pm25, aes(y = Promedio)) +
+  geom_boxplot() +
+  labs(
+    title = "Distribución y valores atípicos de PM2.5",
+    y = "Concentración de PM2.5",
+    x = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),
+    axis.text = element_text(size = 11)
+  )
+```
+
+::: {.interpretacion}
+**Interpretación.** PM2.5 tiene `r sum(pm25$Promedio > outliers_pm$Limite_superior[2])` atípicos, también solo valores altos. Que se concentren en pocas estaciones apunta a fuentes locales y no a un problema generalizado.
+:::
+
+### Valores atípicos de variables meteorológicas
+
+```{r eda-098}
+# Detección de valores atípicos en variables meteorológicas
+
+meteorologicas <- df %>% filter(Variable %in% c("TAire", "HAire", "VViento", "P", "PLiquida", "RGlobal", "RUVb"))
+
+outliers_meteorologicas <- meteorologicas %>% group_by(Variable) %>% summarise(Q1 = quantile(Promedio, 0.25, na.rm = TRUE), Q3 = quantile(Promedio, 0.75, na.rm = TRUE), .groups = "drop") %>% mutate(IQR = Q3 - Q1, Limite_inferior = Q1 - 1.5 * IQR, Limite_superior = Q3 + 1.5 * IQR) %>% mutate(across(where(is.numeric), ~ round(.x, 2)))
+
+outliers_meteorologicas %>% knitr::kable(col.names = c("Variable", "Primer cuartil", "Tercer cuartil", "Rango IQR", "Límite inferior", "Límite superior")) %>% kableExtra::kable_styling(full_width = FALSE, position = "left") %>% kableExtra::column_spec(1:6, border_right = TRUE)
+```
+
+```{r eda-099}
+# Boxplots de las variables meteorológicas
+
+ggplot(meteorologicas, aes(x = Variable, y = Promedio)) +
+  geom_boxplot() +
+  labs(
+    title = "Distribución y valores atípicos de las variables meteorológicas",
+    x = "Variable meteorológica",
+    y = "Valor registrado"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+::: {.interpretacion}
+**Interpretación.** La presión tiene atípicos altos, que son los registros en hPa. La precipitación tiene valores extremos muy lejanos de la caja (acumulados). El viento tiene pocos atípicos.
+
+**Los atípicos no se eliminan:** pueden ser episodios reales de contaminación. Las excepciones son los errores demostrables (presión en hPa, representatividad mayor a 100 %), que deben corregirse en la fuente.
+:::
+
+## Resumen estadístico general
+
+```{r eda-100}
+# Resumen estadístico general de las variables
+
+variables_resumen <- df %>%
+  filter(Variable %in% c(
+    "PM10", "PM2.5", "SO2", "NO2", "O3",
+    "TAire", "HAire", "VViento", "P",
+    "PLiquida", "RGlobal", "RUVb"
+  )) %>%
+  group_by(Variable) %>%
+  summarise(
+    N = sum(!is.na(Promedio)),
+    Mínimo = min(Promedio, na.rm = TRUE),
+    Q1 = quantile(Promedio, 0.25, na.rm = TRUE),
+    Mediana = median(Promedio, na.rm = TRUE),
+    Media = mean(Promedio, na.rm = TRUE),
+    Q3 = quantile(Promedio, 0.75, na.rm = TRUE),
+    Máximo = max(Promedio, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    across(where(is.numeric), ~ round(.x, 2))
+  )
+
+variables_resumen %>%
+  knitr::kable(
+    col.names = c(
+      "Variable", "N", "Mínimo", "Q1",
+      "Mediana", "Media", "Q3", "Máximo"
+    )
+  ) %>%
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    position = "left"
+  ) %>%
+  kableExtra::column_spec(
+    1:8,
+    border_right = TRUE
+  )
+```
+
+::: {.interpretacion}
+**Interpretación.** Esta tabla resume las variables principales en un solo lugar y cierra el análisis descriptivo.
+:::
+
+## Variable objetivo: excedencia diaria de PM2.5 {#variable-objetivo}
+
+*Objetivo específico 2: caracterizar la variable que predecirá el modelo.*
+
+El modelo del proyecto responderá: **¿una estación registrará en el año al menos un día con PM2.5 por encima del límite diario de la Resolución 2254 de 2017?** Antes de definirla hay que verificar qué mide exactamente la columna `Excedencias limite actual` en cada tiempo de exposición.
+
+```{r objetivo-verificacion}
+# Verificar la columna de excedencias según el tiempo de exposición
+pm25 <- pm25 %>% mutate(Excede = `Excedencias limite actual` > 0)
+
+pm25 %>%
+  group_by(`Tiempo de exposición (horas)`) %>%
+  summarise(
+    Registros = n(),
+    Porcentaje_que_excede = round(mean(Excede) * 100, 1),
+    Maximo_sin_excedencia = max(Máximo[!Excede]),
+    .groups = "drop"
+  ) %>%
+  knitr::kable(col.names = c("Exposición (h)", "Registros", "% que excede", "Máximo sin excedencia (µg/m³)")) %>%
+  kableExtra::kable_styling(full_width = FALSE, position = "left")
+```
+
+::: {.interpretacion}
+**Interpretación.** En los registros de **24 horas** ninguna estación sin excedencias supera `r fmt(max(pm25$Máximo[pm25[['Tiempo de exposición (horas)']] == 24 & !pm25$Excede]), 1)` µg/m³, lo que coincide con el límite diario de la norma. En los de **1 hora**, en cambio, hay estaciones con máximos de `r fmt(max(pm25$Máximo[pm25[['Tiempo de exposición (horas)']] == 1 & !pm25$Excede]), 1)` µg/m³ que figuran sin excedencias: la norma no define un límite horario para PM2.5 y esa columna no es confiable en esos registros.
+
+**Decisión:** la variable objetivo se construye solo con los registros de 24 horas.
+:::
+
+```{r objetivo-balance}
+# Construir la variable objetivo con los registros de 24 horas
+pm25_24h <- pm25 %>%
+  filter(`Tiempo de exposición (horas)` == 24) %>%
+  mutate(Excede = as.integer(Excede))
+
+cat("Registros:", nrow(pm25_24h), "| Estaciones:", n_distinct(pm25_24h$Estación), "\n")
+
+pm25_24h %>%
+  count(Excede, name = "Registros") %>%
+  mutate(Porcentaje = round(Registros / sum(Registros) * 100, 1)) %>%
+  knitr::kable(col.names = c("Excede (1 = sí)", "Registros", "Porcentaje")) %>%
+  kableExtra::kable_styling(full_width = FALSE, position = "left")
+```
+
+::: {.interpretacion}
+**Interpretación.** La variable objetivo tiene **`r fmt(nrow(pm25_24h), 0)` registros de `r n_distinct(pm25_24h$Estación)` estaciones**, y el `r fmt(mean(pm25_24h$Excede) * 100, 1)` % excede el límite. Las clases están **balanceadas**, así que el modelo no necesitará técnicas de sobremuestreo y la exactitud será una métrica razonable (junto con el AUC y el recall).
+:::
+
+```{r objetivo-umbral}
+# Máximo diario de PM2.5 frente al límite de la norma
+limite <- data.frame(Año = c(2010.5, 2018.5, 2024.5), Limite = c(50, 37, 37))
+
+ggplot(pm25_24h, aes(x = Año, y = Máximo, color = factor(Excede, labels = c("No excede", "Excede")))) +
+  geom_jitter(width = 0.25, height = 0, size = 1.2, alpha = 0.6) +
+  geom_step(data = limite, aes(x = Año, y = Limite), inherit.aes = FALSE, linewidth = 0.8) +
+  scale_color_manual(values = c("No excede" = "grey60", "Excede" = "#c62828"), name = NULL) +
+  scale_x_continuous(breaks = 2011:2024) +
+  coord_cartesian(ylim = c(0, 150)) +
+  labs(title = "Máximo diario de PM2.5 y límite de la norma",
+       subtitle = "La línea negra es el límite diario de la Resolución 2254 de 2017",
+       x = "Año", y = "Máximo diario de PM2.5 (µg/m³)") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 16), legend.position = "top",
+        axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.minor = element_blank())
+```
+
+::: {.interpretacion}
+**Interpretación.** El gráfico confirma la definición: los registros que exceden (rojo) están por encima de la línea del límite y los que no exceden (gris) por debajo. El límite bajó de **50 a 37 µg/m³** a mediados de 2018, cuando entró en vigor el nivel más estricto de la norma. Por eso una misma concentración puede ser excedencia después de 2018 y no antes.
+:::
+
+```{r objetivo-anual}
+# Porcentaje de estaciones que exceden el límite por año
+excedencia_anual <- pm25_24h %>%
+  group_by(Año) %>%
+  summarise(Tasa = mean(Excede) * 100, Registros = n(), .groups = "drop")
+
+ggplot(excedencia_anual, aes(x = factor(Año), y = Tasa)) +
+  geom_col() +
+  geom_text(aes(label = paste0(round(Tasa), "%\n(n=", Registros, ")")), vjust = -0.2, size = 3) +
+  coord_cartesian(ylim = c(0, 100)) +
+  labs(title = "Porcentaje de estaciones que exceden el límite por año",
+       x = "Año", y = "Estaciones que exceden (%)") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 16),
+        axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.minor = element_blank())
+```
+
+::: {.interpretacion}
+**Interpretación.** La tasa de excedencia no tiene una tendencia clara: oscila entre `r fmt(min(excedencia_anual$Tasa), 0)` % (`r excedencia_anual$Año[which.min(excedencia_anual$Tasa)]`) y `r fmt(max(excedencia_anual$Tasa), 0)` % (`r excedencia_anual$Año[which.max(excedencia_anual$Tasa)]`). Los picos de 2016, 2019–2020 y 2024 sugieren años con episodios de contaminación más frecuentes, que podrían relacionarse con condiciones meteorológicas o incendios; el dataset no permite confirmarlo.
+
+Dos efectos complican la lectura: entre 2011 y 2016 hay pocas estaciones, y en 2018 el límite se volvió más estricto. A pesar de que el promedio de PM2.5 bajó, **los días con excedencias siguen siendo frecuentes**: mejorar el promedio no elimina los episodios críticos.
+:::
+
+```{r objetivo-tipo}
+# Excedencia según el tipo de estación
+excedencia_tipo <- pm25_24h %>%
+  group_by(`Tipo de Estación`) %>%
+  summarise(Tasa = round(mean(Excede) * 100, 1), Registros = n(), .groups = "drop")
+
+excedencia_tipo %>%
+  knitr::kable(col.names = c("Tipo de estación", "% que excede", "Registros")) %>%
+  kableExtra::kable_styling(full_width = FALSE, position = "left")
+```
+
+::: {.interpretacion}
+**Interpretación.** Las estaciones **fijas** exceden con mucha más frecuencia (`r fmt(excedencia_tipo$Tasa[excedencia_tipo[['Tipo de Estación']] == 'Fija'], 0)` %) que las **indicativas** (`r fmt(excedencia_tipo$Tasa[excedencia_tipo[['Tipo de Estación']] == 'Indicativa'], 0)` %). Las fijas miden todo el año y suelen estar en zonas urbanas críticas; las indicativas son campañas cortas, con menos días para registrar una excedencia.
+:::
+
+```{r objetivo-departamento}
+# Excedencia por departamento (nombres normalizados, al menos 20 registros)
+excedencia_depto <- pm25_24h %>%
+  group_by(Departamento_norm) %>%
+  summarise(Tasa = mean(Excede) * 100, Registros = n(), .groups = "drop") %>%
+  filter(Registros >= 20) %>%
+  mutate(Departamento_norm = reorder(Departamento_norm, Tasa))
+
+ggplot(excedencia_depto, aes(x = Departamento_norm, y = Tasa)) +
+  geom_col() +
+  geom_text(aes(label = paste0(round(Tasa), "%")), hjust = -0.15, size = 3.5) +
+  coord_flip() +
+  expand_limits(y = 100) +
+  labs(title = "Porcentaje de registros que exceden el límite de PM2.5",
+       subtitle = "Departamentos con al menos 20 registros",
+       x = "Departamento", y = "Registros que exceden (%)") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 16), panel.grid.minor = element_blank())
+```
+
+::: {.interpretacion}
+**Interpretación.** Hay un contraste geográfico claro. **Bogotá, Antioquia y Cundinamarca** exceden con frecuencia, mientras que **Córdoba, Magdalena y Bolívar** casi no lo hacen.
+
+Una explicación física plausible: las ciudades andinas están en valles o altiplanos donde las inversiones térmicas y el poco viento atrapan los contaminantes, mientras que en la costa Caribe los vientos alisios favorecen la dispersión. La ubicación será uno de los predictores más importantes del modelo.
+:::
+
+```{r objetivo-mapa, fig.height = 7}
+# Estaciones de PM2.5 según la frecuencia de excedencia
+estaciones_pm25 <- pm25_24h %>%
+  group_by(Estación) %>%
+  summarise(Latitud = mean(Latitud), Longitud = mean(Longitud),
+            Tasa = mean(Excede) * 100, Años = n(), .groups = "drop")
+
+ggplot(estaciones_pm25, aes(x = Longitud, y = Latitud, color = Tasa, size = Años)) +
+  geom_point(alpha = 0.85) +
+  scale_color_gradient(low = "#fde0dd", high = "#a50f15", name = "Años con\nexcedencia (%)") +
+  scale_size(range = c(1, 5)) +
+  coord_equal() +
+  labs(title = "Estaciones de PM2.5 según frecuencia de excedencia", x = "Longitud", y = "Latitud") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 16))
+```
+
+::: {.interpretacion}
+**Interpretación.** El mapa muestra el mismo patrón: los puntos rojos intensos se concentran en el centro andino (Bogotá, Valle de Aburrá) y los claros en el norte (Caribe) y el suroccidente. El tamaño del punto indica cuántos años reportó la estación.
+:::
+
+```{r objetivo-esfuerzo}
+# Excedencia según los días medidos en el año (esfuerzo de medición)
+esfuerzo <- pm25_24h %>%
+  mutate(Cuartil_datos = ntile(`No. de datos`, 4)) %>%
+  group_by(Cuartil_datos) %>%
+  summarise(Dias_medidos = median(`No. de datos`), Tasa = round(mean(Excede) * 100, 1),
+            Registros = n(), .groups = "drop")
+
+esfuerzo %>%
+  knitr::kable(col.names = c("Cuartil de días medidos", "Mediana de días medidos", "% que excede", "Registros")) %>%
+  kableExtra::kable_styling(full_width = FALSE, position = "left")
+```
+
+::: {.interpretacion}
+**Interpretación.** Este es el hallazgo más importante para el modelo. Las estaciones que midieron pocos días (cuartil 1, mediana de `r esfuerzo$Dias_medidos[1]` días) exceden en el `r fmt(esfuerzo$Tasa[1], 0)` % de los casos, y las que midieron casi todo el año (cuartil 4) en el `r fmt(esfuerzo$Tasa[4], 0)` %. **Mientras más días se mide, más probable es captar al menos un día malo.**
+:::
+
+::: {.precaucion}
+**Precaución.** La variable objetivo depende del **esfuerzo de medición** y no solo de la calidad del aire. El modelo debe incluir `No. de datos` (o la representatividad) como predictor de control. Si no, confundirá «estación que mide mucho» con «estación contaminada».
+:::
+
+```{r objetivo-promedio, fig.width = 6, out.width = '60%'}
+# Promedio anual de PM2.5 según excedencia
+ggplot(pm25_24h, aes(x = factor(Excede, labels = c("No excede", "Excede")), y = Promedio)) +
+  geom_boxplot(width = 0.5) +
+  labs(title = "Promedio anual de PM2.5 según excedencia", x = NULL, y = "Promedio anual de PM2.5 (µg/m³)") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 16))
+```
+
+::: {.interpretacion}
+**Interpretación.** Las estaciones que exceden tienen un promedio anual mayor (mediana de `r fmt(median(pm25_24h$Promedio[pm25_24h$Excede == 1]), 1)` frente a `r fmt(median(pm25_24h$Promedio[pm25_24h$Excede == 0]), 1)` µg/m³), pero las cajas se solapan: hay estaciones con promedio bajo que igual tienen días críticos. El promedio anual por sí solo no basta para anticipar las excedencias.
+:::
+
+::: {.precaucion}
+**Precaución.** `Promedio`, `Mediana`, `Percentil 98`, `Máximo`, `Días de excedencias` y `Porcentaje excedencias limite actual` de PM2.5 se calculan con las mismas mediciones que definen la excedencia. Usarlas como predictores sería **fuga de información** (*data leakage*): el modelo acertaría en el EDA pero sería inútil en la práctica.
+:::
+
+### Predictores candidatos para el modelo {-}
+
+| Variable | Uso | Razón |
+|---|---|---|
+| Latitud, Longitud, Departamento | ✅ Incluir | Fuerte contraste andino–Caribe |
+| Tipo de estación | ✅ Incluir | Fijas mucho más que indicativas |
+| No. de datos, Representatividad | ✅ Incluir (control) | Controlan el esfuerzo de medición |
+| Año | ✅ Incluir | Captura el cambio de límite (2018) y la evolución de la red |
+| Autoridad ambiental | ⚠️ Evaluar | Puede repetir la información de ubicación |
+| Promedio, Mediana, P98, Máximo, Días de excedencias de PM2.5 | ❌ Excluir | Fuga de información |
+| Meteorología de la misma estación | ⚠️ Evaluar | Aporta física, pero solo ~30 % de las estaciones la mide |
+
+::: {.interpretacion}
+**Interpretación.** Con estos predictores, una prueba rápida con un bosque aleatorio y validación por estación (las estaciones de entrenamiento y de prueba son distintas) alcanzó un **AUC de 0,81**. El problema es viable; la etapa de modelado deberá comparar algoritmos, ajustar hiperparámetros y evaluar qué aporta la meteorología.
+:::

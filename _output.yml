@@ -1,0 +1,17 @@
+bookdown::gitbook:
+  css: [style.css, portada.css]
+  split_by: chapter
+  config:
+    toc:
+      collapse: section
+      toc_depth: 3
+      before: |
+        <li><strong>&nbsp;Calidad del aire en Colombia</strong><br>&nbsp;<span style="font-size:.85em">Camilo Romero</span></li>
+      after: |
+        <li><a href="https://www.uninorte.edu.co" target="_blank">Universidad del Norte</a></li>
+    download: no
+    sharing: no
+    search: yes
+    fontsettings:
+      theme: white
+      family: sans
