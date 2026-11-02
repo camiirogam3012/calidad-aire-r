@@ -4,4 +4,4 @@ delete_merged_file: true
 language:
   ui:
     chapter_name: "Capítulo "
-rmd_files: ["index.Rmd", "02-eda.Rmd", "03-conclusiones.Rmd"]
+rmd_files: ["index.Rmd", "02-eda.Rmd", "03-modelo.Rmd", "04-conclusiones.Rmd"]

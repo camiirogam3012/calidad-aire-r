@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="es" xml:lang="es">
+<head>
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Capítulo 3 Modelo de predicción | Calidad del aire en Colombia, 2011–2024</title>
+  <meta name="description" content="Análisis exploratorio de datos de la calidad del aire en Colombia (2011-2024) con R." />
+  <meta name="generator" content="bookdown 0.37 and GitBook 2.6.7" />
+
+  <meta property="og:title" content="Capítulo 3 Modelo de predicción | Calidad del aire en Colombia, 2011–2024" />
+  <meta property="og:type" content="book" />
+  
+  <meta property="og:description" content="Análisis exploratorio de datos de la calidad del aire en Colombia (2011-2024) con R." />
+  
+
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Capítulo 3 Modelo de predicción | Calidad del aire en Colombia, 2011–2024" />
+  
+  <meta name="twitter:description" content="Análisis exploratorio de datos de la calidad del aire en Colombia (2011-2024) con R." />
+  
+
+<meta name="author" content="Camilo Romero" />
+
+
+<meta name="date" content="2026-01-01" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  
+  
+<link rel="prev" href="eda.html"/>
+<link rel="next" href="conclusiones.html"/>
+<script src="libs/jquery-3.6.1/jquery-3.6.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
+<link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-highlight.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
+
+
+
+
+
+
+
+
+<link href="libs/anchor-sections-1.1.0/anchor-sections.css" rel="stylesheet" />
+<link href="libs/anchor-sections-1.1.0/anchor-sections-hash.css" rel="stylesheet" />
+<script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
+<script src="libs/kePrint-0.0.1/kePrint.js"></script>
+<link href="libs/lightable-0.0.1/lightable.css" rel="stylesheet" />
+<script src="libs/htmlwidgets-1.6.4/htmlwidgets.js"></script>
+<script src="libs/plotly-binding-4.10.4/plotly.js"></script>
+<script src="libs/typedarray-0.1/typedarray.min.js"></script>
+<link href="libs/crosstalk-1.2.1/css/crosstalk.min.css" rel="stylesheet" />
+<script src="libs/crosstalk-1.2.1/js/crosstalk.min.js"></script>
+<link href="libs/plotly-htmlwidgets-css-2.11.1/plotly-htmlwidgets.css" rel="stylesheet" />
+<script src="libs/plotly-main-2.11.1/plotly-latest.min.js"></script>
+
+
+<style type="text/css">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { color: #008000; } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { color: #008000; font-weight: bold; } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+</style>
+
+<style type="text/css">
+  
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+</style>
+
+<link rel="stylesheet" href="style.css" type="text/css" />
+<link rel="stylesheet" href="portada.css" type="text/css" />
+</head>
+
+<body>
+
+
+
+  <div class="book without-animation with-summary font-size-2 font-family-1" data-basepath=".">
+
+    <div class="book-summary">
+      <nav role="navigation">
+
+<ul class="summary">
+<li><span style="font-weight:500">&nbsp;Calidad del aire en Colombia</span><br>&nbsp;<span style="font-size:.85em">Camilo Romero</span></li>
+
+<li class="divider"></li>
+<li class="chapter" data-level="" data-path="index.html"><a href="index.html"><i class="fa fa-check"></i>Calidad del aire en Colombia, 2011–2024</a></li>
+<li class="chapter" data-level="1" data-path="planteamiento.html"><a href="planteamiento.html"><i class="fa fa-check"></i><b>1</b> Planteamiento</a>
+<ul>
+<li class="chapter" data-level="1.1" data-path="planteamiento.html"><a href="planteamiento.html#introducción"><i class="fa fa-check"></i><b>1.1</b> Introducción</a></li>
+<li class="chapter" data-level="1.2" data-path="planteamiento.html"><a href="planteamiento.html#marco-de-referencia"><i class="fa fa-check"></i><b>1.2</b> Marco de referencia</a></li>
+<li class="chapter" data-level="1.3" data-path="planteamiento.html"><a href="planteamiento.html#planteamiento-del-problema"><i class="fa fa-check"></i><b>1.3</b> Planteamiento del problema</a></li>
+<li class="chapter" data-level="1.4" data-path="planteamiento.html"><a href="planteamiento.html#objetivos"><i class="fa fa-check"></i><b>1.4</b> Objetivos</a>
+<ul>
+<li class="chapter" data-level="" data-path="planteamiento.html"><a href="planteamiento.html#objetivo-general"><i class="fa fa-check"></i>Objetivo general</a></li>
+<li class="chapter" data-level="" data-path="planteamiento.html"><a href="planteamiento.html#objetivos-específicos"><i class="fa fa-check"></i>Objetivos específicos</a></li>
+</ul></li>
+<li class="chapter" data-level="1.5" data-path="planteamiento.html"><a href="planteamiento.html#metodología"><i class="fa fa-check"></i><b>1.5</b> Metodología</a></li>
+</ul></li>
+<li class="chapter" data-level="2" data-path="eda.html"><a href="eda.html"><i class="fa fa-check"></i><b>2</b> Análisis exploratorio de datos</a>
+<ul>
+<li class="chapter" data-level="2.1" data-path="eda.html"><a href="eda.html#preparación-y-calidad-de-los-datos"><i class="fa fa-check"></i><b>2.1</b> Preparación y calidad de los datos</a></li>
+<li class="chapter" data-level="2.2" data-path="eda.html"><a href="eda.html#exploración-general-del-dataset"><i class="fa fa-check"></i><b>2.2</b> Exploración general del dataset</a>
+<ul>
+<li class="chapter" data-level="2.2.1" data-path="eda.html"><a href="eda.html#distribución-de-registros-por-estación"><i class="fa fa-check"></i><b>2.2.1</b> Distribución de registros por estación</a></li>
+<li class="chapter" data-level="2.2.2" data-path="eda.html"><a href="eda.html#distribución-de-registros-por-variable-ambiental"><i class="fa fa-check"></i><b>2.2.2</b> Distribución de registros por variable ambiental</a></li>
+</ul></li>
+<li class="chapter" data-level="2.3" data-path="eda.html"><a href="eda.html#distribución-temporal-de-los-registros"><i class="fa fa-check"></i><b>2.3</b> Distribución temporal de los registros</a></li>
+<li class="chapter" data-level="2.4" data-path="eda.html"><a href="eda.html#estadística-descriptiva-y-distribución-de-variables-ambientales"><i class="fa fa-check"></i><b>2.4</b> Estadística descriptiva y distribución de variables ambientales</a>
+<ul>
+<li class="chapter" data-level="2.4.1" data-path="eda.html"><a href="eda.html#distribución-de-las-variables-ambientales"><i class="fa fa-check"></i><b>2.4.1</b> Distribución de las variables ambientales</a></li>
+<li class="chapter" data-level="2.4.2" data-path="eda.html"><a href="eda.html#identificación-de-valores-atípicos"><i class="fa fa-check"></i><b>2.4.2</b> Identificación de valores atípicos</a></li>
+<li class="chapter" data-level="2.4.3" data-path="eda.html"><a href="eda.html#resumen-de-valores-atípicos"><i class="fa fa-check"></i><b>2.4.3</b> Resumen de valores atípicos</a></li>
+</ul></li>
+<li class="chapter" data-level="2.5" data-path="eda.html"><a href="eda.html#representatividad-temporal-de-los-datos"><i class="fa fa-check"></i><b>2.5</b> Representatividad temporal de los datos</a></li>
+<li class="chapter" data-level="2.6" data-path="eda.html"><a href="eda.html#distribución-geográfica-de-las-estaciones"><i class="fa fa-check"></i><b>2.6</b> Distribución geográfica de las estaciones</a>
+<ul>
+<li class="chapter" data-level="2.6.1" data-path="eda.html"><a href="eda.html#distribución-por-tipo-de-estación"><i class="fa fa-check"></i><b>2.6.1</b> Distribución por tipo de estación</a></li>
+<li class="chapter" data-level="2.6.2" data-path="eda.html"><a href="eda.html#distribución-por-departamento"><i class="fa fa-check"></i><b>2.6.2</b> Distribución por departamento</a></li>
+<li class="chapter" data-level="2.6.3" data-path="eda.html"><a href="eda.html#distribución-por-municipio"><i class="fa fa-check"></i><b>2.6.3</b> Distribución por municipio</a></li>
+</ul></li>
+<li class="chapter" data-level="2.7" data-path="eda.html"><a href="eda.html#análisis-específico-de-contaminantes"><i class="fa fa-check"></i><b>2.7</b> Análisis específico de contaminantes</a>
+<ul>
+<li class="chapter" data-level="2.7.1" data-path="eda.html"><a href="eda.html#pm10"><i class="fa fa-check"></i><b>2.7.1</b> PM10</a></li>
+<li class="chapter" data-level="2.7.2" data-path="eda.html"><a href="eda.html#pm2.5"><i class="fa fa-check"></i><b>2.7.2</b> PM2.5</a></li>
+<li class="chapter" data-level="2.7.3" data-path="eda.html"><a href="eda.html#no₂"><i class="fa fa-check"></i><b>2.7.3</b> NO₂</a></li>
+<li class="chapter" data-level="2.7.4" data-path="eda.html"><a href="eda.html#o₃"><i class="fa fa-check"></i><b>2.7.4</b> O₃</a></li>
+<li class="chapter" data-level="2.7.5" data-path="eda.html"><a href="eda.html#so₂"><i class="fa fa-check"></i><b>2.7.5</b> SO₂</a></li>
+<li class="chapter" data-level="2.7.6" data-path="eda.html"><a href="eda.html#comparación-del-cambio-porcentual-de-los-contaminantes"><i class="fa fa-check"></i><b>2.7.6</b> Comparación del cambio porcentual de los contaminantes</a></li>
+</ul></li>
+<li class="chapter" data-level="2.8" data-path="eda.html"><a href="eda.html#análisis-de-variables-meteorológicas"><i class="fa fa-check"></i><b>2.8</b> Análisis de variables meteorológicas</a>
+<ul>
+<li class="chapter" data-level="2.8.1" data-path="eda.html"><a href="eda.html#temperatura-del-aire-taire"><i class="fa fa-check"></i><b>2.8.1</b> Temperatura del aire (TAire)</a></li>
+<li class="chapter" data-level="2.8.2" data-path="eda.html"><a href="eda.html#humedad-relativa-del-aire-haire"><i class="fa fa-check"></i><b>2.8.2</b> Humedad relativa del aire (HAire)</a></li>
+<li class="chapter" data-level="2.8.3" data-path="eda.html"><a href="eda.html#velocidad-del-viento-vviento"><i class="fa fa-check"></i><b>2.8.3</b> Velocidad del viento (VViento)</a></li>
+<li class="chapter" data-level="2.8.4" data-path="eda.html"><a href="eda.html#dirección-del-viento-dviento"><i class="fa fa-check"></i><b>2.8.4</b> Dirección del viento (DViento)</a></li>
+<li class="chapter" data-level="2.8.5" data-path="eda.html"><a href="eda.html#presión-atmosférica-p"><i class="fa fa-check"></i><b>2.8.5</b> Presión atmosférica (P)</a></li>
+<li class="chapter" data-level="2.8.6" data-path="eda.html"><a href="eda.html#precipitación-líquida-pliquida"><i class="fa fa-check"></i><b>2.8.6</b> Precipitación líquida (PLiquida)</a></li>
+<li class="chapter" data-level="2.8.7" data-path="eda.html"><a href="eda.html#radiación-global-rglobal"><i class="fa fa-check"></i><b>2.8.7</b> Radiación global (RGlobal)</a></li>
+<li class="chapter" data-level="2.8.8" data-path="eda.html"><a href="eda.html#radiación-ultravioleta-b-ruvb"><i class="fa fa-check"></i><b>2.8.8</b> Radiación ultravioleta B (RUVb)</a></li>
+</ul></li>
+<li class="chapter" data-level="2.9" data-path="eda.html"><a href="eda.html#análisis-de-correlaciones"><i class="fa fa-check"></i><b>2.9</b> Análisis de correlaciones</a>
+<ul>
+<li class="chapter" data-level="2.9.1" data-path="eda.html"><a href="eda.html#preparación-de-los-datos"><i class="fa fa-check"></i><b>2.9.1</b> Preparación de los datos</a></li>
+<li class="chapter" data-level="2.9.2" data-path="eda.html"><a href="eda.html#matriz-de-correlaciones"><i class="fa fa-check"></i><b>2.9.2</b> Matriz de correlaciones</a></li>
+<li class="chapter" data-level="2.9.3" data-path="eda.html"><a href="eda.html#tabla-de-correlaciones-y-fuerza-de-asociación"><i class="fa fa-check"></i><b>2.9.3</b> Tabla de correlaciones y fuerza de asociación</a></li>
+</ul></li>
+<li class="chapter" data-level="2.10" data-path="eda.html"><a href="eda.html#análisis-de-valores-atípicos"><i class="fa fa-check"></i><b>2.10</b> Análisis de valores atípicos</a>
+<ul>
+<li class="chapter" data-level="2.10.1" data-path="eda.html"><a href="eda.html#valores-atípicos-de-pm10"><i class="fa fa-check"></i><b>2.10.1</b> Valores atípicos de PM10</a></li>
+<li class="chapter" data-level="2.10.2" data-path="eda.html"><a href="eda.html#valores-atípicos-de-pm2.5"><i class="fa fa-check"></i><b>2.10.2</b> Valores atípicos de PM2.5</a></li>
+<li class="chapter" data-level="2.10.3" data-path="eda.html"><a href="eda.html#valores-atípicos-de-variables-meteorológicas"><i class="fa fa-check"></i><b>2.10.3</b> Valores atípicos de variables meteorológicas</a></li>
+</ul></li>
+<li class="chapter" data-level="2.11" data-path="eda.html"><a href="eda.html#resumen-estadístico-general"><i class="fa fa-check"></i><b>2.11</b> Resumen estadístico general</a></li>
+<li class="chapter" data-level="2.12" data-path="eda.html"><a href="eda.html#variables-problemas"><i class="fa fa-check"></i><b>2.12</b> Variables con problemas</a></li>
+<li class="chapter" data-level="2.13" data-path="eda.html"><a href="eda.html#variable-objetivo"><i class="fa fa-check"></i><b>2.13</b> Variable objetivo: excedencia diaria de PM2.5</a>
+<ul>
+<li class="chapter" data-level="" data-path="eda.html"><a href="eda.html#predictores-candidatos-para-el-modelo"><i class="fa fa-check"></i>Predictores candidatos para el modelo</a></li>
+</ul></li>
+</ul></li>
+<li class="chapter" data-level="3" data-path="modelo.html"><a href="modelo.html"><i class="fa fa-check"></i><b>3</b> Modelo de predicción</a>
+<ul>
+<li class="chapter" data-level="3.1" data-path="modelo.html"><a href="modelo.html#preparación-de-los-datos-1"><i class="fa fa-check"></i><b>3.1</b> Preparación de los datos</a>
+<ul>
+<li class="chapter" data-level="" data-path="modelo.html"><a href="modelo.html#predictores"><i class="fa fa-check"></i>Predictores</a></li>
+</ul></li>
+<li class="chapter" data-level="3.2" data-path="modelo.html"><a href="modelo.html#validación-por-estación"><i class="fa fa-check"></i><b>3.2</b> Validación por estación</a></li>
+<li class="chapter" data-level="3.3" data-path="modelo.html"><a href="modelo.html#importancia-de-los-predictores"><i class="fa fa-check"></i><b>3.3</b> Importancia de los predictores</a></li>
+<li class="chapter" data-level="3.4" data-path="modelo.html"><a href="modelo.html#entrenamiento-con-división-en-entrenamiento-y-prueba"><i class="fa fa-check"></i><b>3.4</b> Entrenamiento con división en entrenamiento y prueba</a></li>
+<li class="chapter" data-level="3.5" data-path="modelo.html"><a href="modelo.html#serialización-del-modelo"><i class="fa fa-check"></i><b>3.5</b> Serialización del modelo</a></li>
+<li class="chapter" data-level="3.6" data-path="modelo.html"><a href="modelo.html#ejemplos-de-predicción"><i class="fa fa-check"></i><b>3.6</b> Ejemplos de predicción</a></li>
+<li class="chapter" data-level="3.7" data-path="modelo.html"><a href="modelo.html#integración-en-la-aplicación-y-el-dashboard"><i class="fa fa-check"></i><b>3.7</b> Integración en la aplicación y el dashboard</a></li>
+</ul></li>
+<li class="chapter" data-level="4" data-path="conclusiones.html"><a href="conclusiones.html"><i class="fa fa-check"></i><b>4</b> Conclusiones</a>
+<ul>
+<li class="chapter" data-level="4.1" data-path="conclusiones.html"><a href="conclusiones.html#respuesta-a-la-pregunta-de-investigación"><i class="fa fa-check"></i><b>4.1</b> Respuesta a la pregunta de investigación</a></li>
+<li class="chapter" data-level="4.2" data-path="conclusiones.html"><a href="conclusiones.html#hallazgos-del-análisis-exploratorio"><i class="fa fa-check"></i><b>4.2</b> Hallazgos del análisis exploratorio</a></li>
+<li class="chapter" data-level="4.3" data-path="conclusiones.html"><a href="conclusiones.html#hallazgos-sobre-la-variable-objetivo"><i class="fa fa-check"></i><b>4.3</b> Hallazgos sobre la variable objetivo</a></li>
+<li class="chapter" data-level="4.4" data-path="conclusiones.html"><a href="conclusiones.html#resultados-del-modelo"><i class="fa fa-check"></i><b>4.4</b> Resultados del modelo</a></li>
+<li class="chapter" data-level="4.5" data-path="conclusiones.html"><a href="conclusiones.html#decisiones-del-preprocesamiento"><i class="fa fa-check"></i><b>4.5</b> Decisiones del preprocesamiento</a></li>
+<li class="chapter" data-level="4.6" data-path="conclusiones.html"><a href="conclusiones.html#limitaciones"><i class="fa fa-check"></i><b>4.6</b> Limitaciones</a></li>
+</ul></li>
+<li class="divider"></li>
+<li><a href="https://www.uninorte.edu.co" target="_blank">Universidad del Norte</a></li>
+
+</ul>
+
+      </nav>
+    </div>
+
+    <div class="book-body">
+      <div class="body-inner">
+        <div class="book-header" role="navigation">
+          <h1>
+            <i class="fa fa-circle-o-notch fa-spin"></i><a href="./">Calidad del aire en Colombia, 2011–2024</a>
+          </h1>
+        </div>
+
+        <div class="page-wrapper" tabindex="-1" role="main">
+          <div class="page-inner">
+
+            <section class="normal" id="section-">
+<div id="modelo" class="section level1 hasAnchor" number="3">
+<h1><span class="header-section-number">Capítulo 3</span> Modelo de predicción<a href="modelo.html#modelo" class="anchor-section" aria-label="Anchor link to header"></a></h1>
+<p>En este capítulo se entrena el modelo que predice si una estación tendrá en el año al menos un día con PM2.5 por encima del límite diario de la Resolución 2254 de 2017. Se usan los registros de 24 horas y los predictores que salieron del análisis exploratorio. El mismo modelo está integrado en la <a href="https://l28nb2-camilo-romero.shinyapps.io/calidad-aire-colombia/">aplicación en Shiny</a> y en el <a href="https://eda-dashboard-2pvi.onrender.com/">dashboard en Dash</a>.</p>
+<div id="preparación-de-los-datos-1" class="section level2 hasAnchor" number="3.1">
+<h2><span class="header-section-number">3.1</span> Preparación de los datos<a href="modelo.html#preparación-de-los-datos-1" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<div class="sourceCode" id="cb117"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb117-1"><a href="modelo.html#cb117-1" tabindex="-1"></a><span class="fu">library</span>(ranger)</span>
+<span id="cb117-2"><a href="modelo.html#cb117-2" tabindex="-1"></a><span class="fu">library</span>(mgcv)</span>
+<span id="cb117-3"><a href="modelo.html#cb117-3" tabindex="-1"></a></span>
+<span id="cb117-4"><a href="modelo.html#cb117-4" tabindex="-1"></a>d_mod <span class="ot">&lt;-</span> pm25_24h <span class="sc">%&gt;%</span></span>
+<span id="cb117-5"><a href="modelo.html#cb117-5" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="st">`</span><span class="at">Tipo de Estación</span><span class="st">`</span> <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">&quot;Fija&quot;</span>, <span class="st">&quot;Indicativa&quot;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb117-6"><a href="modelo.html#cb117-6" tabindex="-1"></a>  <span class="fu">transmute</span>(<span class="at">Estacion =</span> Estación, <span class="at">Municipio =</span> Municipio_norm, Latitud, Longitud,</span>
+<span id="cb117-7"><a href="modelo.html#cb117-7" tabindex="-1"></a>            <span class="at">Fija =</span> <span class="fu">as.integer</span>(<span class="st">`</span><span class="at">Tipo de Estación</span><span class="st">`</span> <span class="sc">==</span> <span class="st">&quot;Fija&quot;</span>), <span class="at">Dias =</span> <span class="st">`</span><span class="at">No. de datos</span><span class="st">`</span>, <span class="at">Anio =</span> Año, Excede)</span>
+<span id="cb117-8"><a href="modelo.html#cb117-8" tabindex="-1"></a></span>
+<span id="cb117-9"><a href="modelo.html#cb117-9" tabindex="-1"></a><span class="fu">tabla</span>(<span class="fu">data.frame</span>(<span class="at">Registros =</span> <span class="fu">nrow</span>(d_mod), <span class="at">Estaciones =</span> <span class="fu">n_distinct</span>(d_mod<span class="sc">$</span>Estacion), <span class="at">Exceden =</span> <span class="fu">sum</span>(d_mod<span class="sc">$</span>Excede),</span>
+<span id="cb117-10"><a href="modelo.html#cb117-10" tabindex="-1"></a>                 <span class="at">Porcentaje =</span> <span class="fu">mean</span>(d_mod<span class="sc">$</span>Excede) <span class="sc">*</span> <span class="dv">100</span>),</span>
+<span id="cb117-11"><a href="modelo.html#cb117-11" tabindex="-1"></a>      <span class="fu">c</span>(<span class="st">&quot;Registros&quot;</span>, <span class="st">&quot;Estaciones&quot;</span>, <span class="st">&quot;Exceden&quot;</span>, <span class="st">&quot;Porcentaje que excede (%)&quot;</span>), <span class="at">dec =</span> <span class="dv">1</span>)</span></code></pre></div>
+<table class="table table-striped table-condensed" style="width: auto !important; ">
+<thead>
+<tr>
+<th style="text-align:right;">
+Registros
+</th>
+<th style="text-align:right;">
+Estaciones
+</th>
+<th style="text-align:right;">
+Exceden
+</th>
+<th style="text-align:right;">
+Porcentaje que excede (%)
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+1.144
+</td>
+<td style="text-align:right;">
+383
+</td>
+<td style="text-align:right;">
+548
+</td>
+<td style="text-align:right;">
+47,9
+</td>
+</tr>
+</tbody>
+</table>
+<div class="interpretacion">
+<p>El conjunto de entrenamiento tiene 1.144 registros de 383 estaciones y el 47,9 % excede el límite. Las dos clases tienen casi el mismo tamaño, así que no hace falta balancearlas.</p>
+</div>
+<div id="predictores" class="section level3 unnumbered hasAnchor">
+<h3>Predictores<a href="modelo.html#predictores" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<table>
+<colgroup>
+<col width="33%" />
+<col width="33%" />
+<col width="33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Predictor</th>
+<th>Descripción</th>
+<th>Por qué entra</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Latitud y longitud</td>
+<td>Ubicación de la estación</td>
+<td>Las ciudades andinas exceden mucho más que el Caribe</td>
+</tr>
+<tr class="even">
+<td>Fija</td>
+<td>1 si la estación es fija, 0 si es indicativa</td>
+<td>Las fijas exceden mucho más que las indicativas</td>
+</tr>
+<tr class="odd">
+<td>Dias</td>
+<td>Días medidos en el año (<code>No. de datos</code>)</td>
+<td>Entre más días se mide, más fácil es captar un día malo</td>
+</tr>
+<tr class="even">
+<td>Anio</td>
+<td>2011 a 2024</td>
+<td>Recoge el cambio de límite de 2018 y los cambios de la red</td>
+</tr>
+</tbody>
+</table>
+<p>No entran el promedio, la mediana, el percentil 98, el máximo ni los días de excedencia del PM2.5, porque se calculan con las mismas mediciones que definen la variable objetivo (fuga de información).</p>
+</div>
+</div>
+<div id="validación-por-estación" class="section level2 hasAnchor" number="3.2">
+<h2><span class="header-section-number">3.2</span> Validación por estación<a href="modelo.html#validación-por-estación" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Una misma estación aparece en varios años. Si las filas se dividen al azar, la misma estación queda en entrenamiento y en prueba, y el modelo parece mejor de lo que es. Por eso las estaciones se reparten en 5 grupos y cada estación queda completa en un solo grupo. Se comparan tres modelos: regresión logística (<code>glm</code>), bosque aleatorio (<code>ranger</code>) y un modelo aditivo generalizado (GAM, con <code>mgcv</code>), que permite relaciones curvas y una superficie suave para la ubicación.</p>
+<div class="sourceCode" id="cb118"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb118-1"><a href="modelo.html#cb118-1" tabindex="-1"></a>MODELOS <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb118-2"><a href="modelo.html#cb118-2" tabindex="-1"></a>  <span class="st">&quot;Regresión logística&quot;</span> <span class="ot">=</span> <span class="cf">function</span>(tr) {</span>
+<span id="cb118-3"><a href="modelo.html#cb118-3" tabindex="-1"></a>    m <span class="ot">&lt;-</span> <span class="fu">glm</span>(Excede <span class="sc">~</span> Latitud <span class="sc">+</span> Longitud <span class="sc">+</span> Fija <span class="sc">+</span> Dias <span class="sc">+</span> Anio, <span class="at">data =</span> tr, <span class="at">family =</span> binomial)</span>
+<span id="cb118-4"><a href="modelo.html#cb118-4" tabindex="-1"></a>    <span class="cf">function</span>(nd) <span class="fu">as.numeric</span>(<span class="fu">predict</span>(m, nd, <span class="at">type =</span> <span class="st">&quot;response&quot;</span>))</span>
+<span id="cb118-5"><a href="modelo.html#cb118-5" tabindex="-1"></a>  },</span>
+<span id="cb118-6"><a href="modelo.html#cb118-6" tabindex="-1"></a>  <span class="st">&quot;Bosque aleatorio&quot;</span> <span class="ot">=</span> <span class="cf">function</span>(tr) {</span>
+<span id="cb118-7"><a href="modelo.html#cb118-7" tabindex="-1"></a>    m <span class="ot">&lt;-</span> <span class="fu">ranger</span>(<span class="fu">factor</span>(Excede) <span class="sc">~</span> Latitud <span class="sc">+</span> Longitud <span class="sc">+</span> Fija <span class="sc">+</span> Dias <span class="sc">+</span> Anio, <span class="at">data =</span> tr, <span class="at">num.trees =</span> <span class="dv">500</span>,</span>
+<span id="cb118-8"><a href="modelo.html#cb118-8" tabindex="-1"></a>                <span class="at">min.node.size =</span> <span class="dv">5</span>, <span class="at">probability =</span> <span class="cn">TRUE</span>, <span class="at">seed =</span> <span class="dv">42</span>)</span>
+<span id="cb118-9"><a href="modelo.html#cb118-9" tabindex="-1"></a>    <span class="cf">function</span>(nd) <span class="fu">predict</span>(m, nd)<span class="sc">$</span>predictions[, <span class="st">&quot;1&quot;</span>]</span>
+<span id="cb118-10"><a href="modelo.html#cb118-10" tabindex="-1"></a>  },</span>
+<span id="cb118-11"><a href="modelo.html#cb118-11" tabindex="-1"></a>  <span class="st">&quot;GAM (modelo aditivo)&quot;</span> <span class="ot">=</span> <span class="cf">function</span>(tr) {</span>
+<span id="cb118-12"><a href="modelo.html#cb118-12" tabindex="-1"></a>    m <span class="ot">&lt;-</span> <span class="fu">gam</span>(Excede <span class="sc">~</span> <span class="fu">s</span>(Latitud, Longitud, <span class="at">k =</span> <span class="dv">30</span>) <span class="sc">+</span> Fija <span class="sc">+</span> <span class="fu">s</span>(Dias, <span class="at">k =</span> <span class="dv">8</span>) <span class="sc">+</span> <span class="fu">s</span>(Anio, <span class="at">k =</span> <span class="dv">6</span>),</span>
+<span id="cb118-13"><a href="modelo.html#cb118-13" tabindex="-1"></a>             <span class="at">data =</span> tr, <span class="at">family =</span> binomial, <span class="at">method =</span> <span class="st">&quot;REML&quot;</span>)</span>
+<span id="cb118-14"><a href="modelo.html#cb118-14" tabindex="-1"></a>    <span class="cf">function</span>(nd) <span class="fu">as.numeric</span>(<span class="fu">predict</span>(m, nd, <span class="at">type =</span> <span class="st">&quot;response&quot;</span>))</span>
+<span id="cb118-15"><a href="modelo.html#cb118-15" tabindex="-1"></a>  }</span>
+<span id="cb118-16"><a href="modelo.html#cb118-16" tabindex="-1"></a>)</span>
+<span id="cb118-17"><a href="modelo.html#cb118-17" tabindex="-1"></a></span>
+<span id="cb118-18"><a href="modelo.html#cb118-18" tabindex="-1"></a>auc_valor <span class="ot">&lt;-</span> <span class="cf">function</span>(y, p) {</span>
+<span id="cb118-19"><a href="modelo.html#cb118-19" tabindex="-1"></a>  r <span class="ot">&lt;-</span> <span class="fu">rank</span>(p); n1 <span class="ot">&lt;-</span> <span class="fu">sum</span>(y <span class="sc">==</span> <span class="dv">1</span>); n0 <span class="ot">&lt;-</span> <span class="fu">sum</span>(y <span class="sc">==</span> <span class="dv">0</span>)</span>
+<span id="cb118-20"><a href="modelo.html#cb118-20" tabindex="-1"></a>  (<span class="fu">sum</span>(r[y <span class="sc">==</span> <span class="dv">1</span>]) <span class="sc">-</span> n1 <span class="sc">*</span> (n1 <span class="sc">+</span> <span class="dv">1</span>) <span class="sc">/</span> <span class="dv">2</span>) <span class="sc">/</span> (n1 <span class="sc">*</span> n0)</span>
+<span id="cb118-21"><a href="modelo.html#cb118-21" tabindex="-1"></a>}</span>
+<span id="cb118-22"><a href="modelo.html#cb118-22" tabindex="-1"></a></span>
+<span id="cb118-23"><a href="modelo.html#cb118-23" tabindex="-1"></a>metricas <span class="ot">&lt;-</span> <span class="cf">function</span>(y, p) {</span>
+<span id="cb118-24"><a href="modelo.html#cb118-24" tabindex="-1"></a>  pr <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(p <span class="sc">&gt;=</span> <span class="fl">0.5</span>)</span>
+<span id="cb118-25"><a href="modelo.html#cb118-25" tabindex="-1"></a>  vp <span class="ot">&lt;-</span> <span class="fu">sum</span>(pr <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> y <span class="sc">==</span> <span class="dv">1</span>); vn <span class="ot">&lt;-</span> <span class="fu">sum</span>(pr <span class="sc">==</span> <span class="dv">0</span> <span class="sc">&amp;</span> y <span class="sc">==</span> <span class="dv">0</span>); fp <span class="ot">&lt;-</span> <span class="fu">sum</span>(pr <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> y <span class="sc">==</span> <span class="dv">0</span>); fn <span class="ot">&lt;-</span> <span class="fu">sum</span>(pr <span class="sc">==</span> <span class="dv">0</span> <span class="sc">&amp;</span> y <span class="sc">==</span> <span class="dv">1</span>)</span>
+<span id="cb118-26"><a href="modelo.html#cb118-26" tabindex="-1"></a>  n <span class="ot">&lt;-</span> <span class="fu">length</span>(y); po <span class="ot">&lt;-</span> (vp <span class="sc">+</span> vn) <span class="sc">/</span> n; pe <span class="ot">&lt;-</span> ((vp <span class="sc">+</span> fp) <span class="sc">*</span> (vp <span class="sc">+</span> fn) <span class="sc">+</span> (fn <span class="sc">+</span> vn) <span class="sc">*</span> (fp <span class="sc">+</span> vn)) <span class="sc">/</span> n<span class="sc">^</span><span class="dv">2</span></span>
+<span id="cb118-27"><a href="modelo.html#cb118-27" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">auc =</span> <span class="fu">auc_valor</span>(y, p), <span class="at">exactitud =</span> po, <span class="at">precision =</span> vp <span class="sc">/</span> (vp <span class="sc">+</span> fp), <span class="at">recall =</span> vp <span class="sc">/</span> (vp <span class="sc">+</span> fn),</span>
+<span id="cb118-28"><a href="modelo.html#cb118-28" tabindex="-1"></a>       <span class="at">especificidad =</span> vn <span class="sc">/</span> (vn <span class="sc">+</span> fp), <span class="at">f1 =</span> <span class="dv">2</span> <span class="sc">*</span> vp <span class="sc">/</span> (<span class="dv">2</span> <span class="sc">*</span> vp <span class="sc">+</span> fp <span class="sc">+</span> fn), <span class="at">kappa =</span> (po <span class="sc">-</span> pe) <span class="sc">/</span> (<span class="dv">1</span> <span class="sc">-</span> pe),</span>
+<span id="cb118-29"><a href="modelo.html#cb118-29" tabindex="-1"></a>       <span class="at">matriz =</span> <span class="fu">c</span>(<span class="at">vn =</span> vn, <span class="at">fp =</span> fp, <span class="at">fn =</span> fn, <span class="at">vp =</span> vp))</span>
+<span id="cb118-30"><a href="modelo.html#cb118-30" tabindex="-1"></a>}</span>
+<span id="cb118-31"><a href="modelo.html#cb118-31" tabindex="-1"></a></span>
+<span id="cb118-32"><a href="modelo.html#cb118-32" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
+<span id="cb118-33"><a href="modelo.html#cb118-33" tabindex="-1"></a>estaciones <span class="ot">&lt;-</span> <span class="fu">unique</span>(d_mod<span class="sc">$</span>Estacion)</span>
+<span id="cb118-34"><a href="modelo.html#cb118-34" tabindex="-1"></a>d_mod<span class="sc">$</span>Grupo <span class="ot">&lt;-</span> <span class="fu">setNames</span>(<span class="fu">sample</span>(<span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>, <span class="at">length.out =</span> <span class="fu">length</span>(estaciones))), estaciones)[d_mod<span class="sc">$</span>Estacion]</span>
+<span id="cb118-35"><a href="modelo.html#cb118-35" tabindex="-1"></a></span>
+<span id="cb118-36"><a href="modelo.html#cb118-36" tabindex="-1"></a>prob_cv <span class="ot">&lt;-</span> <span class="fu">list</span>(); filas <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb118-37"><a href="modelo.html#cb118-37" tabindex="-1"></a><span class="cf">for</span> (nombre <span class="cf">in</span> <span class="fu">names</span>(MODELOS)) {</span>
+<span id="cb118-38"><a href="modelo.html#cb118-38" tabindex="-1"></a>  p <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="fu">nrow</span>(d_mod)); auc_g <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
+<span id="cb118-39"><a href="modelo.html#cb118-39" tabindex="-1"></a>  <span class="cf">for</span> (k <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>) {</span>
+<span id="cb118-40"><a href="modelo.html#cb118-40" tabindex="-1"></a>    f <span class="ot">&lt;-</span> MODELOS[[nombre]](d_mod[d_mod<span class="sc">$</span>Grupo <span class="sc">!=</span> k, ])</span>
+<span id="cb118-41"><a href="modelo.html#cb118-41" tabindex="-1"></a>    p[d_mod<span class="sc">$</span>Grupo <span class="sc">==</span> k] <span class="ot">&lt;-</span> <span class="fu">f</span>(d_mod[d_mod<span class="sc">$</span>Grupo <span class="sc">==</span> k, ])</span>
+<span id="cb118-42"><a href="modelo.html#cb118-42" tabindex="-1"></a>    auc_g <span class="ot">&lt;-</span> <span class="fu">c</span>(auc_g, <span class="fu">auc_valor</span>(d_mod<span class="sc">$</span>Excede[d_mod<span class="sc">$</span>Grupo <span class="sc">==</span> k], p[d_mod<span class="sc">$</span>Grupo <span class="sc">==</span> k]))</span>
+<span id="cb118-43"><a href="modelo.html#cb118-43" tabindex="-1"></a>  }</span>
+<span id="cb118-44"><a href="modelo.html#cb118-44" tabindex="-1"></a>  prob_cv[[nombre]] <span class="ot">&lt;-</span> p</span>
+<span id="cb118-45"><a href="modelo.html#cb118-45" tabindex="-1"></a>  m <span class="ot">&lt;-</span> <span class="fu">metricas</span>(d_mod<span class="sc">$</span>Excede, p)</span>
+<span id="cb118-46"><a href="modelo.html#cb118-46" tabindex="-1"></a>  filas[[nombre]] <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">Modelo =</span> nombre, <span class="at">AUC =</span> m<span class="sc">$</span>auc, <span class="at">AUC_media =</span> <span class="fu">mean</span>(auc_g), <span class="at">Desv =</span> <span class="fu">sd</span>(auc_g),</span>
+<span id="cb118-47"><a href="modelo.html#cb118-47" tabindex="-1"></a>                                <span class="at">Exactitud =</span> m<span class="sc">$</span>exactitud, <span class="at">Precision =</span> m<span class="sc">$</span>precision, <span class="at">Recall =</span> m<span class="sc">$</span>recall, <span class="at">F1 =</span> m<span class="sc">$</span>f1)</span>
+<span id="cb118-48"><a href="modelo.html#cb118-48" tabindex="-1"></a>}</span>
+<span id="cb118-49"><a href="modelo.html#cb118-49" tabindex="-1"></a>res_mod <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(filas) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(<span class="fu">desc</span>(AUC))</span>
+<span id="cb118-50"><a href="modelo.html#cb118-50" tabindex="-1"></a><span class="fu">tabla</span>(res_mod, <span class="fu">c</span>(<span class="st">&quot;Modelo&quot;</span>, <span class="st">&quot;AUC&quot;</span>, <span class="st">&quot;AUC media por grupo&quot;</span>, <span class="st">&quot;Desv. por grupo&quot;</span>, <span class="st">&quot;Exactitud&quot;</span>, <span class="st">&quot;Precisión&quot;</span>, <span class="st">&quot;Recall&quot;</span>, <span class="st">&quot;F1&quot;</span>),</span>
+<span id="cb118-51"><a href="modelo.html#cb118-51" tabindex="-1"></a>      <span class="at">dec =</span> <span class="dv">3</span>)</span></code></pre></div>
+<table class="table table-striped table-condensed" style="width: auto !important; ">
+<thead>
+<tr>
+<th style="text-align:left;">
+Modelo
+</th>
+<th style="text-align:right;">
+AUC
+</th>
+<th style="text-align:right;">
+AUC media por grupo
+</th>
+<th style="text-align:right;">
+Desv. por grupo
+</th>
+<th style="text-align:right;">
+Exactitud
+</th>
+<th style="text-align:right;">
+Precisión
+</th>
+<th style="text-align:right;">
+Recall
+</th>
+<th style="text-align:right;">
+F1
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+GAM (modelo aditivo)
+</td>
+<td style="text-align:right;">
+0,817
+</td>
+<td style="text-align:right;">
+0,814
+</td>
+<td style="text-align:right;">
+0,029
+</td>
+<td style="text-align:right;">
+0,740
+</td>
+<td style="text-align:right;">
+0,731
+</td>
+<td style="text-align:right;">
+0,721
+</td>
+<td style="text-align:right;">
+0,726
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Bosque aleatorio
+</td>
+<td style="text-align:right;">
+0,815
+</td>
+<td style="text-align:right;">
+0,816
+</td>
+<td style="text-align:right;">
+0,018
+</td>
+<td style="text-align:right;">
+0,740
+</td>
+<td style="text-align:right;">
+0,743
+</td>
+<td style="text-align:right;">
+0,697
+</td>
+<td style="text-align:right;">
+0,719
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Regresión logística
+</td>
+<td style="text-align:right;">
+0,733
+</td>
+<td style="text-align:right;">
+0,739
+</td>
+<td style="text-align:right;">
+0,032
+</td>
+<td style="text-align:right;">
+0,684
+</td>
+<td style="text-align:right;">
+0,658
+</td>
+<td style="text-align:right;">
+0,710
+</td>
+<td style="text-align:right;">
+0,683
+</td>
+</tr>
+</tbody>
+</table>
+<div class="interpretacion">
+<p>GAM (modelo aditivo) tiene el mejor AUC (0,817), seguido muy de cerca por bosque aleatorio (0,815). La regresión logística queda bastante atrás (0,733) porque solo puede trazar fronteras lineales, y la relación con la ubicación no es lineal: el riesgo sube en el centro andino y baja hacia el norte y el sur.</p>
+<p>Con el mejor modelo se acierta en 74 de cada 100 registros (exactitud de 0,740) y se detecta el 72 % de los que sí exceden (recall de 0,721). La desviación entre grupos es baja (0,029), así que el resultado no depende de qué estaciones quedaron en cada grupo.</p>
+</div>
+<div class="sourceCode" id="cb119"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb119-1"><a href="modelo.html#cb119-1" tabindex="-1"></a>curva_roc <span class="ot">&lt;-</span> <span class="cf">function</span>(y, p) {</span>
+<span id="cb119-2"><a href="modelo.html#cb119-2" tabindex="-1"></a>  u <span class="ot">&lt;-</span> <span class="fu">sort</span>(<span class="fu">unique</span>(<span class="fu">c</span>(<span class="cn">Inf</span>, p)), <span class="at">decreasing =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb119-3"><a href="modelo.html#cb119-3" tabindex="-1"></a>  <span class="fu">data.frame</span>(<span class="at">fpr =</span> <span class="fu">sapply</span>(u, <span class="cf">function</span>(x) <span class="fu">mean</span>(p[y <span class="sc">==</span> <span class="dv">0</span>] <span class="sc">&gt;=</span> x)), <span class="at">tpr =</span> <span class="fu">sapply</span>(u, <span class="cf">function</span>(x) <span class="fu">mean</span>(p[y <span class="sc">==</span> <span class="dv">1</span>] <span class="sc">&gt;=</span> x)))</span>
+<span id="cb119-4"><a href="modelo.html#cb119-4" tabindex="-1"></a>}</span>
+<span id="cb119-5"><a href="modelo.html#cb119-5" tabindex="-1"></a>roc_df <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(<span class="fu">lapply</span>(<span class="fu">names</span>(prob_cv), <span class="cf">function</span>(n)</span>
+<span id="cb119-6"><a href="modelo.html#cb119-6" tabindex="-1"></a>  <span class="fu">curva_roc</span>(d_mod<span class="sc">$</span>Excede, prob_cv[[n]]) <span class="sc">%&gt;%</span></span>
+<span id="cb119-7"><a href="modelo.html#cb119-7" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">Modelo =</span> <span class="fu">paste0</span>(n, <span class="st">&quot; (AUC &quot;</span>, <span class="fu">fmt</span>(<span class="fu">auc_valor</span>(d_mod<span class="sc">$</span>Excede, prob_cv[[n]]), <span class="dv">3</span>), <span class="st">&quot;)&quot;</span>))))</span>
+<span id="cb119-8"><a href="modelo.html#cb119-8" tabindex="-1"></a></span>
+<span id="cb119-9"><a href="modelo.html#cb119-9" tabindex="-1"></a><span class="fu">ggplot</span>(roc_df, <span class="fu">aes</span>(fpr, tpr, <span class="at">color =</span> Modelo)) <span class="sc">+</span></span>
+<span id="cb119-10"><a href="modelo.html#cb119-10" tabindex="-1"></a>  <span class="fu">geom_abline</span>(<span class="at">linetype =</span> <span class="st">&quot;dotted&quot;</span>, <span class="at">color =</span> <span class="st">&quot;grey50&quot;</span>) <span class="sc">+</span></span>
+<span id="cb119-11"><a href="modelo.html#cb119-11" tabindex="-1"></a>  <span class="fu">geom_step</span>(<span class="at">linewidth =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb119-12"><a href="modelo.html#cb119-12" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;#2a78d6&quot;</span>, <span class="st">&quot;#a23b48&quot;</span>, <span class="st">&quot;#94a3b8&quot;</span>)) <span class="sc">+</span></span>
+<span id="cb119-13"><a href="modelo.html#cb119-13" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Curvas ROC con validación por estación&quot;</span>, <span class="at">x =</span> <span class="st">&quot;Tasa de falsos positivos (1 − especificidad)&quot;</span>,</span>
+<span id="cb119-14"><a href="modelo.html#cb119-14" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;Sensibilidad (recall)&quot;</span>, <span class="at">color =</span> <span class="cn">NULL</span>) <span class="sc">+</span></span>
+<span id="cb119-15"><a href="modelo.html#cb119-15" tabindex="-1"></a>  tema <span class="sc">+</span> <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="fu">c</span>(<span class="fl">0.68</span>, <span class="fl">0.18</span>), <span class="at">legend.background =</span> <span class="fu">element_rect</span>(<span class="at">fill =</span> <span class="st">&quot;white&quot;</span>, <span class="at">color =</span> <span class="cn">NA</span>))</span></code></pre></div>
+<p><img src="eda-calidad-aire_files/figure-html/modelo-roc-1.png" width="80%" style="display: block; margin: auto;" /></p>
+<div class="interpretacion">
+<p>Las curvas del bosque aleatorio y del GAM casi se superponen y están por encima de la regresión logística. Las tres quedan lejos de la diagonal, que sería un modelo que adivina al azar.</p>
+</div>
+<div class="sourceCode" id="cb120"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb120-1"><a href="modelo.html#cb120-1" tabindex="-1"></a>mejor <span class="ot">&lt;-</span> res_mod<span class="sc">$</span>Modelo[<span class="dv">1</span>]</span>
+<span id="cb120-2"><a href="modelo.html#cb120-2" tabindex="-1"></a>m_mejor <span class="ot">&lt;-</span> <span class="fu">metricas</span>(d_mod<span class="sc">$</span>Excede, prob_cv[[mejor]])</span>
+<span id="cb120-3"><a href="modelo.html#cb120-3" tabindex="-1"></a>mc <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">Real =</span> <span class="fu">factor</span>(<span class="fu">c</span>(<span class="st">&quot;No excede&quot;</span>, <span class="st">&quot;No excede&quot;</span>, <span class="st">&quot;Excede&quot;</span>, <span class="st">&quot;Excede&quot;</span>), <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">&quot;Excede&quot;</span>, <span class="st">&quot;No excede&quot;</span>)),</span>
+<span id="cb120-4"><a href="modelo.html#cb120-4" tabindex="-1"></a>                 <span class="at">Prediccion =</span> <span class="fu">c</span>(<span class="st">&quot;Predice no excede&quot;</span>, <span class="st">&quot;Predice excede&quot;</span>, <span class="st">&quot;Predice no excede&quot;</span>, <span class="st">&quot;Predice excede&quot;</span>),</span>
+<span id="cb120-5"><a href="modelo.html#cb120-5" tabindex="-1"></a>                 <span class="at">n =</span> <span class="fu">as.numeric</span>(m_mejor<span class="sc">$</span>matriz[<span class="fu">c</span>(<span class="st">&quot;vn&quot;</span>, <span class="st">&quot;fp&quot;</span>, <span class="st">&quot;fn&quot;</span>, <span class="st">&quot;vp&quot;</span>)]))</span>
+<span id="cb120-6"><a href="modelo.html#cb120-6" tabindex="-1"></a><span class="fu">ggplot</span>(mc, <span class="fu">aes</span>(Prediccion, Real, <span class="at">fill =</span> n)) <span class="sc">+</span></span>
+<span id="cb120-7"><a href="modelo.html#cb120-7" tabindex="-1"></a>  <span class="fu">geom_tile</span>(<span class="at">color =</span> <span class="st">&quot;white&quot;</span>) <span class="sc">+</span></span>
+<span id="cb120-8"><a href="modelo.html#cb120-8" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> <span class="fu">paste0</span>(n, <span class="st">&quot;</span><span class="sc">\n</span><span class="st">(&quot;</span>, <span class="fu">round</span>(n <span class="sc">/</span> <span class="fu">sum</span>(n) <span class="sc">*</span> <span class="dv">100</span>), <span class="st">&quot; %)&quot;</span>), <span class="at">color =</span> n <span class="sc">&gt;</span> <span class="fu">max</span>(n) <span class="sc">/</span> <span class="dv">2</span>), <span class="at">size =</span> <span class="dv">5</span>, <span class="at">lineheight =</span> <span class="fl">0.9</span>) <span class="sc">+</span></span>
+<span id="cb120-9"><a href="modelo.html#cb120-9" tabindex="-1"></a>  <span class="fu">scale_fill_gradient</span>(<span class="at">low =</span> <span class="st">&quot;#f1f5f9&quot;</span>, <span class="at">high =</span> <span class="st">&quot;#1c2b33&quot;</span>) <span class="sc">+</span> <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;black&quot;</span>, <span class="st">&quot;white&quot;</span>)) <span class="sc">+</span></span>
+<span id="cb120-10"><a href="modelo.html#cb120-10" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">paste</span>(<span class="st">&quot;Matriz de confusión:&quot;</span>, <span class="fu">tolower</span>(mejor)), <span class="at">x =</span> <span class="st">&quot;Predicción (umbral 0,5)&quot;</span>, <span class="at">y =</span> <span class="st">&quot;Valor real&quot;</span>) <span class="sc">+</span></span>
+<span id="cb120-11"><a href="modelo.html#cb120-11" tabindex="-1"></a>  tema <span class="sc">+</span> <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&quot;none&quot;</span>, <span class="at">panel.grid =</span> <span class="fu">element_blank</span>())</span></code></pre></div>
+<p><img src="eda-calidad-aire_files/figure-html/modelo-matriz-1.png" width="60%" style="display: block; margin: auto;" /></p>
+<div class="interpretacion">
+<p>De los 1.144 registros, el modelo clasifica bien 846: 451 que no exceden y 395 que sí. Se equivoca en 145 falsas alarmas (predice excedencia y no la hubo) y en 153 excedencias que no detecta. Los errores están repartidos, así que el modelo no está sesgado hacia una sola clase.</p>
+</div>
+</div>
+<div id="importancia-de-los-predictores" class="section level2 hasAnchor" number="3.3">
+<h2><span class="header-section-number">3.3</span> Importancia de los predictores<a href="modelo.html#importancia-de-los-predictores" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<div class="sourceCode" id="cb121"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb121-1"><a href="modelo.html#cb121-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
+<span id="cb121-2"><a href="modelo.html#cb121-2" tabindex="-1"></a>predictores <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">Latitud =</span> <span class="st">&quot;Latitud&quot;</span>, <span class="at">Longitud =</span> <span class="st">&quot;Longitud&quot;</span>, <span class="at">Fija =</span> <span class="st">&quot;Tipo de estación&quot;</span>, <span class="at">Dias =</span> <span class="st">&quot;Días medidos&quot;</span>, <span class="at">Anio =</span> <span class="st">&quot;Año&quot;</span>)</span>
+<span id="cb121-3"><a href="modelo.html#cb121-3" tabindex="-1"></a>imp <span class="ot">&lt;-</span> <span class="fu">sapply</span>(<span class="fu">names</span>(predictores), <span class="cf">function</span>(v) <span class="fu">mean</span>(<span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>, <span class="cf">function</span>(k) {</span>
+<span id="cb121-4"><a href="modelo.html#cb121-4" tabindex="-1"></a>  te <span class="ot">&lt;-</span> d_mod[d_mod<span class="sc">$</span>Grupo <span class="sc">==</span> k, ]</span>
+<span id="cb121-5"><a href="modelo.html#cb121-5" tabindex="-1"></a>  f <span class="ot">&lt;-</span> MODELOS[[mejor]](d_mod[d_mod<span class="sc">$</span>Grupo <span class="sc">!=</span> k, ])</span>
+<span id="cb121-6"><a href="modelo.html#cb121-6" tabindex="-1"></a>  base <span class="ot">&lt;-</span> <span class="fu">auc_valor</span>(te<span class="sc">$</span>Excede, <span class="fu">f</span>(te))</span>
+<span id="cb121-7"><a href="modelo.html#cb121-7" tabindex="-1"></a>  <span class="fu">mean</span>(<span class="fu">replicate</span>(<span class="dv">5</span>, { tp <span class="ot">&lt;-</span> te; tp[[v]] <span class="ot">&lt;-</span> <span class="fu">sample</span>(tp[[v]]); base <span class="sc">-</span> <span class="fu">auc_valor</span>(te<span class="sc">$</span>Excede, <span class="fu">f</span>(tp)) }))</span>
+<span id="cb121-8"><a href="modelo.html#cb121-8" tabindex="-1"></a>})))</span>
+<span id="cb121-9"><a href="modelo.html#cb121-9" tabindex="-1"></a>imp_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">Predictor =</span> predictores[<span class="fu">names</span>(imp)], <span class="at">Caida =</span> imp) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(Caida)</span>
+<span id="cb121-10"><a href="modelo.html#cb121-10" tabindex="-1"></a></span>
+<span id="cb121-11"><a href="modelo.html#cb121-11" tabindex="-1"></a><span class="fu">ggplot</span>(imp_df, <span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">reorder</span>(Predictor, Caida), <span class="at">y =</span> Caida)) <span class="sc">+</span></span>
+<span id="cb121-12"><a href="modelo.html#cb121-12" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">fill =</span> <span class="st">&quot;#a23b48&quot;</span>) <span class="sc">+</span></span>
+<span id="cb121-13"><a href="modelo.html#cb121-13" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> <span class="fu">fmt</span>(Caida, <span class="dv">3</span>)), <span class="at">hjust =</span> <span class="sc">-</span><span class="fl">0.15</span>, <span class="at">size =</span> <span class="fl">3.3</span>) <span class="sc">+</span></span>
+<span id="cb121-14"><a href="modelo.html#cb121-14" tabindex="-1"></a>  <span class="fu">coord_flip</span>() <span class="sc">+</span> <span class="fu">expand_limits</span>(<span class="at">y =</span> <span class="fu">max</span>(imp_df<span class="sc">$</span>Caida) <span class="sc">*</span> <span class="fl">1.15</span>) <span class="sc">+</span></span>
+<span id="cb121-15"><a href="modelo.html#cb121-15" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">paste</span>(<span class="st">&quot;Importancia por permutación:&quot;</span>, <span class="fu">tolower</span>(mejor)), <span class="at">x =</span> <span class="cn">NULL</span>,</span>
+<span id="cb121-16"><a href="modelo.html#cb121-16" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;Caída del AUC al desordenar la variable&quot;</span>) <span class="sc">+</span></span>
+<span id="cb121-17"><a href="modelo.html#cb121-17" tabindex="-1"></a>  tema <span class="sc">+</span> <span class="fu">theme</span>(<span class="at">panel.grid.major.y =</span> <span class="fu">element_blank</span>())</span></code></pre></div>
+<p><img src="eda-calidad-aire_files/figure-html/modelo-importancia-1.png" width="100%" style="display: block; margin: auto;" /></p>
+<div class="interpretacion">
+<p>Los días medidos son el predictor que más pesa: si se desordenan, el AUC baja 0,141. Después vienen la latitud (0,101), la longitud (0,086) y el año (0,038). El tipo de estación aporta poco (0,026) porque su efecto ya está recogido en los días medidos, ya que las estaciones fijas son las que miden todo el año.</p>
+</div>
+</div>
+<div id="entrenamiento-con-división-en-entrenamiento-y-prueba" class="section level2 hasAnchor" number="3.4">
+<h2><span class="header-section-number">3.4</span> Entrenamiento con división en entrenamiento y prueba<a href="modelo.html#entrenamiento-con-división-en-entrenamiento-y-prueba" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Esta es la forma en que se entrena el modelo en la aplicación y en el dashboard: se elige un porcentaje de estaciones para entrenar (aquí 80 %) y el resto se usa para probar. La división también se hace por estación.</p>
+<div class="sourceCode" id="cb122"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb122-1"><a href="modelo.html#cb122-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
+<span id="cb122-2"><a href="modelo.html#cb122-2" tabindex="-1"></a>est_tr <span class="ot">&lt;-</span> <span class="fu">sample</span>(estaciones, <span class="fu">round</span>(<span class="fu">length</span>(estaciones) <span class="sc">*</span> <span class="fl">0.8</span>))</span>
+<span id="cb122-3"><a href="modelo.html#cb122-3" tabindex="-1"></a>entrenamiento <span class="ot">&lt;-</span> d_mod[d_mod<span class="sc">$</span>Estacion <span class="sc">%in%</span> est_tr, ]</span>
+<span id="cb122-4"><a href="modelo.html#cb122-4" tabindex="-1"></a>prueba_df <span class="ot">&lt;-</span> d_mod[<span class="sc">!</span>d_mod<span class="sc">$</span>Estacion <span class="sc">%in%</span> est_tr, ]</span>
+<span id="cb122-5"><a href="modelo.html#cb122-5" tabindex="-1"></a>f_mejor <span class="ot">&lt;-</span> MODELOS[[mejor]](entrenamiento)</span>
+<span id="cb122-6"><a href="modelo.html#cb122-6" tabindex="-1"></a>prueba <span class="ot">&lt;-</span> <span class="fu">metricas</span>(prueba_df<span class="sc">$</span>Excede, <span class="fu">f_mejor</span>(prueba_df))</span>
+<span id="cb122-7"><a href="modelo.html#cb122-7" tabindex="-1"></a></span>
+<span id="cb122-8"><a href="modelo.html#cb122-8" tabindex="-1"></a><span class="fu">tabla</span>(<span class="fu">data.frame</span>(<span class="at">Entrenamiento =</span> <span class="fu">length</span>(est_tr), <span class="at">Prueba =</span> <span class="fu">length</span>(estaciones) <span class="sc">-</span> <span class="fu">length</span>(est_tr), <span class="at">AUC =</span> prueba<span class="sc">$</span>auc,</span>
+<span id="cb122-9"><a href="modelo.html#cb122-9" tabindex="-1"></a>                 <span class="at">Exactitud =</span> prueba<span class="sc">$</span>exactitud, <span class="at">Kappa =</span> prueba<span class="sc">$</span>kappa, <span class="at">Sensibilidad =</span> prueba<span class="sc">$</span>recall,</span>
+<span id="cb122-10"><a href="modelo.html#cb122-10" tabindex="-1"></a>                 <span class="at">Especificidad =</span> prueba<span class="sc">$</span>especificidad, <span class="at">F1 =</span> prueba<span class="sc">$</span>f1),</span>
+<span id="cb122-11"><a href="modelo.html#cb122-11" tabindex="-1"></a>      <span class="fu">c</span>(<span class="st">&quot;Estaciones de entrenamiento&quot;</span>, <span class="st">&quot;Estaciones de prueba&quot;</span>, <span class="st">&quot;AUC&quot;</span>, <span class="st">&quot;Exactitud&quot;</span>, <span class="st">&quot;Kappa&quot;</span>, <span class="st">&quot;Sensibilidad&quot;</span>,</span>
+<span id="cb122-12"><a href="modelo.html#cb122-12" tabindex="-1"></a>        <span class="st">&quot;Especificidad&quot;</span>, <span class="st">&quot;F1&quot;</span>), <span class="at">dec =</span> <span class="dv">3</span>)</span></code></pre></div>
+<table class="table table-striped table-condensed" style="width: auto !important; ">
+<thead>
+<tr>
+<th style="text-align:right;">
+Estaciones de entrenamiento
+</th>
+<th style="text-align:right;">
+Estaciones de prueba
+</th>
+<th style="text-align:right;">
+AUC
+</th>
+<th style="text-align:right;">
+Exactitud
+</th>
+<th style="text-align:right;">
+Kappa
+</th>
+<th style="text-align:right;">
+Sensibilidad
+</th>
+<th style="text-align:right;">
+Especificidad
+</th>
+<th style="text-align:right;">
+F1
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+306
+</td>
+<td style="text-align:right;">
+77
+</td>
+<td style="text-align:right;">
+0,796
+</td>
+<td style="text-align:right;">
+0,715
+</td>
+<td style="text-align:right;">
+0,423
+</td>
+<td style="text-align:right;">
+0,646
+</td>
+<td style="text-align:right;">
+0,774
+</td>
+<td style="text-align:right;">
+0,677
+</td>
+</tr>
+</tbody>
+</table>
+<div class="interpretacion">
+<p>Con 306 estaciones para entrenar y 77 para probar, el AUC en prueba es 0,796, parecido al de la validación cruzada. El kappa de 0,42 indica un acuerdo moderado más allá del azar. La especificidad (0,77) y la sensibilidad (0,65) muestran cómo le va al modelo con las estaciones que no exceden y con las que sí.</p>
+</div>
+</div>
+<div id="serialización-del-modelo" class="section level2 hasAnchor" number="3.5">
+<h2><span class="header-section-number">3.5</span> Serialización del modelo<a href="modelo.html#serialización-del-modelo" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Para usar el modelo en la aplicación sin volver a entrenarlo cada vez, se entrena con todos los datos y se guarda con <code>saveRDS()</code>. La aplicación lo carga con <code>readRDS()</code> al iniciar.</p>
+<div class="sourceCode" id="cb123"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb123-1"><a href="modelo.html#cb123-1" tabindex="-1"></a>modelo_todos <span class="ot">&lt;-</span> <span class="fu">gam</span>(Excede <span class="sc">~</span> <span class="fu">s</span>(Latitud, Longitud, <span class="at">k =</span> <span class="dv">30</span>) <span class="sc">+</span> Fija <span class="sc">+</span> <span class="fu">s</span>(Dias, <span class="at">k =</span> <span class="dv">8</span>) <span class="sc">+</span> <span class="fu">s</span>(Anio, <span class="at">k =</span> <span class="dv">6</span>),</span>
+<span id="cb123-2"><a href="modelo.html#cb123-2" tabindex="-1"></a>                    <span class="at">data =</span> d_mod, <span class="at">family =</span> binomial, <span class="at">method =</span> <span class="st">&quot;REML&quot;</span>)</span>
+<span id="cb123-3"><a href="modelo.html#cb123-3" tabindex="-1"></a>archivo <span class="ot">&lt;-</span> <span class="fu">file.path</span>(<span class="fu">tempdir</span>(), <span class="st">&quot;modelo_pm25.rds&quot;</span>)</span>
+<span id="cb123-4"><a href="modelo.html#cb123-4" tabindex="-1"></a><span class="fu">saveRDS</span>(modelo_todos, archivo)</span>
+<span id="cb123-5"><a href="modelo.html#cb123-5" tabindex="-1"></a>modelo_cargado <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(archivo)</span>
+<span id="cb123-6"><a href="modelo.html#cb123-6" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Modelo guardado y cargado:&quot;</span>, <span class="fu">class</span>(modelo_cargado)[<span class="dv">1</span>])</span></code></pre></div>
+<pre><code>## Modelo guardado y cargado: gam</code></pre>
+</div>
+<div id="ejemplos-de-predicción" class="section level2 hasAnchor" number="3.6">
+<h2><span class="header-section-number">3.6</span> Ejemplos de predicción<a href="modelo.html#ejemplos-de-predicción" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<div class="sourceCode" id="cb125"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb125-1"><a href="modelo.html#cb125-1" tabindex="-1"></a>caso <span class="ot">&lt;-</span> <span class="cf">function</span>(municipio, nombre, fija, dias, anio) {</span>
+<span id="cb125-2"><a href="modelo.html#cb125-2" tabindex="-1"></a>  m <span class="ot">&lt;-</span> d_mod[d_mod<span class="sc">$</span>Municipio <span class="sc">==</span> municipio, ]</span>
+<span id="cb125-3"><a href="modelo.html#cb125-3" tabindex="-1"></a>  <span class="fu">data.frame</span>(<span class="at">Municipio =</span> nombre, <span class="at">Tipo =</span> <span class="fu">ifelse</span>(fija <span class="sc">==</span> <span class="dv">1</span>, <span class="st">&quot;Fija&quot;</span>, <span class="st">&quot;Indicativa&quot;</span>), <span class="at">Dias =</span> dias, <span class="at">Anio =</span> anio,</span>
+<span id="cb125-4"><a href="modelo.html#cb125-4" tabindex="-1"></a>             <span class="at">Latitud =</span> <span class="fu">mean</span>(m<span class="sc">$</span>Latitud), <span class="at">Longitud =</span> <span class="fu">mean</span>(m<span class="sc">$</span>Longitud), <span class="at">Fija =</span> fija)</span>
+<span id="cb125-5"><a href="modelo.html#cb125-5" tabindex="-1"></a>}</span>
+<span id="cb125-6"><a href="modelo.html#cb125-6" tabindex="-1"></a>casos <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(<span class="fu">caso</span>(<span class="st">&quot;BOGOTA, D.C.&quot;</span>, <span class="st">&quot;Bogotá&quot;</span>, <span class="dv">1</span>, <span class="dv">330</span>, <span class="dv">2024</span>), <span class="fu">caso</span>(<span class="st">&quot;MEDELLIN&quot;</span>, <span class="st">&quot;Medellín&quot;</span>, <span class="dv">1</span>, <span class="dv">300</span>, <span class="dv">2024</span>),</span>
+<span id="cb125-7"><a href="modelo.html#cb125-7" tabindex="-1"></a>                   <span class="fu">caso</span>(<span class="st">&quot;CALI&quot;</span>, <span class="st">&quot;Cali&quot;</span>, <span class="dv">1</span>, <span class="dv">300</span>, <span class="dv">2024</span>), <span class="fu">caso</span>(<span class="st">&quot;SANTA MARTA&quot;</span>, <span class="st">&quot;Santa Marta&quot;</span>, <span class="dv">1</span>, <span class="dv">300</span>, <span class="dv">2024</span>),</span>
+<span id="cb125-8"><a href="modelo.html#cb125-8" tabindex="-1"></a>                   <span class="fu">caso</span>(<span class="st">&quot;MONTERIA&quot;</span>, <span class="st">&quot;Montería&quot;</span>, <span class="dv">0</span>, <span class="dv">60</span>, <span class="dv">2024</span>), <span class="fu">caso</span>(<span class="st">&quot;BOGOTA, D.C.&quot;</span>, <span class="st">&quot;Bogotá&quot;</span>, <span class="dv">0</span>, <span class="dv">60</span>, <span class="dv">2024</span>))</span>
+<span id="cb125-9"><a href="modelo.html#cb125-9" tabindex="-1"></a>casos<span class="sc">$</span>Probabilidad <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">predict</span>(modelo_cargado, casos, <span class="at">type =</span> <span class="st">&quot;response&quot;</span>)) <span class="sc">*</span> <span class="dv">100</span></span>
+<span id="cb125-10"><a href="modelo.html#cb125-10" tabindex="-1"></a>casos<span class="sc">$</span>Prediccion <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(casos<span class="sc">$</span>Probabilidad <span class="sc">&gt;=</span> <span class="dv">50</span>, <span class="st">&quot;Excede&quot;</span>, <span class="st">&quot;No excede&quot;</span>)</span>
+<span id="cb125-11"><a href="modelo.html#cb125-11" tabindex="-1"></a><span class="fu">tabla</span>(casos <span class="sc">%&gt;%</span> <span class="fu">select</span>(Municipio, Tipo, Dias, Anio, Probabilidad, Prediccion),</span>
+<span id="cb125-12"><a href="modelo.html#cb125-12" tabindex="-1"></a>      <span class="fu">c</span>(<span class="st">&quot;Municipio&quot;</span>, <span class="st">&quot;Tipo&quot;</span>, <span class="st">&quot;Días medidos&quot;</span>, <span class="st">&quot;Año&quot;</span>, <span class="st">&quot;Probabilidad (%)&quot;</span>, <span class="st">&quot;Predicción&quot;</span>), <span class="at">dec =</span> <span class="dv">0</span>)</span></code></pre></div>
+<table class="table table-striped table-condensed" style="width: auto !important; ">
+<thead>
+<tr>
+<th style="text-align:left;">
+Municipio
+</th>
+<th style="text-align:left;">
+Tipo
+</th>
+<th style="text-align:right;">
+Días medidos
+</th>
+<th style="text-align:right;">
+Año
+</th>
+<th style="text-align:right;">
+Probabilidad (%)
+</th>
+<th style="text-align:left;">
+Predicción
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Bogotá
+</td>
+<td style="text-align:left;">
+Fija
+</td>
+<td style="text-align:right;">
+330
+</td>
+<td style="text-align:right;">
+2.024
+</td>
+<td style="text-align:right;">
+75
+</td>
+<td style="text-align:left;">
+Excede
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Medellín
+</td>
+<td style="text-align:left;">
+Fija
+</td>
+<td style="text-align:right;">
+300
+</td>
+<td style="text-align:right;">
+2.024
+</td>
+<td style="text-align:right;">
+82
+</td>
+<td style="text-align:left;">
+Excede
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Cali
+</td>
+<td style="text-align:left;">
+Fija
+</td>
+<td style="text-align:right;">
+300
+</td>
+<td style="text-align:right;">
+2.024
+</td>
+<td style="text-align:right;">
+43
+</td>
+<td style="text-align:left;">
+No excede
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Santa Marta
+</td>
+<td style="text-align:left;">
+Fija
+</td>
+<td style="text-align:right;">
+300
+</td>
+<td style="text-align:right;">
+2.024
+</td>
+<td style="text-align:right;">
+20
+</td>
+<td style="text-align:left;">
+No excede
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Montería
+</td>
+<td style="text-align:left;">
+Indicativa
+</td>
+<td style="text-align:right;">
+60
+</td>
+<td style="text-align:right;">
+2.024
+</td>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:left;">
+No excede
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Bogotá
+</td>
+<td style="text-align:left;">
+Indicativa
+</td>
+<td style="text-align:right;">
+60
+</td>
+<td style="text-align:right;">
+2.024
+</td>
+<td style="text-align:right;">
+13
+</td>
+<td style="text-align:left;">
+No excede
+</td>
+</tr>
+</tbody>
+</table>
+<div class="interpretacion">
+<p>Con las mismas condiciones (estación fija, unos 300 días medidos, 2024), la probabilidad cambia mucho según el lugar: Bogotá (75 %) y Medellín (82 %) frente a Cali (43 %) y Santa Marta (20 %). Una estación indicativa que mide solo 60 días tiene menor probabilidad aunque esté en Bogotá (13 %), porque tiene pocos días para registrar una excedencia.</p>
+</div>
+<div class="sourceCode" id="cb126"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb126-1"><a href="modelo.html#cb126-1" tabindex="-1"></a>curvas <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(<span class="fu">lapply</span>(<span class="fu">list</span>(<span class="fu">c</span>(<span class="st">&quot;BOGOTA, D.C.&quot;</span>, <span class="st">&quot;Bogotá&quot;</span>), <span class="fu">c</span>(<span class="st">&quot;MEDELLIN&quot;</span>, <span class="st">&quot;Medellín&quot;</span>), <span class="fu">c</span>(<span class="st">&quot;SANTA MARTA&quot;</span>, <span class="st">&quot;Santa Marta&quot;</span>)),</span>
+<span id="cb126-2"><a href="modelo.html#cb126-2" tabindex="-1"></a>  <span class="cf">function</span>(x) {</span>
+<span id="cb126-3"><a href="modelo.html#cb126-3" tabindex="-1"></a>    base <span class="ot">&lt;-</span> <span class="fu">caso</span>(x[<span class="dv">1</span>], x[<span class="dv">2</span>], <span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">2024</span>)</span>
+<span id="cb126-4"><a href="modelo.html#cb126-4" tabindex="-1"></a>    nd <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">Latitud =</span> base<span class="sc">$</span>Latitud, <span class="at">Longitud =</span> base<span class="sc">$</span>Longitud, <span class="at">Fija =</span> <span class="dv">1</span>, <span class="at">Dias =</span> <span class="fu">seq</span>(<span class="dv">10</span>, <span class="dv">365</span>, <span class="dv">5</span>), <span class="at">Anio =</span> <span class="dv">2024</span>)</span>
+<span id="cb126-5"><a href="modelo.html#cb126-5" tabindex="-1"></a>    nd<span class="sc">$</span>Probabilidad <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">predict</span>(modelo_cargado, nd, <span class="at">type =</span> <span class="st">&quot;response&quot;</span>)) <span class="sc">*</span> <span class="dv">100</span></span>
+<span id="cb126-6"><a href="modelo.html#cb126-6" tabindex="-1"></a>    nd<span class="sc">$</span>Municipio <span class="ot">&lt;-</span> x[<span class="dv">2</span>]</span>
+<span id="cb126-7"><a href="modelo.html#cb126-7" tabindex="-1"></a>    nd</span>
+<span id="cb126-8"><a href="modelo.html#cb126-8" tabindex="-1"></a>  }))</span>
+<span id="cb126-9"><a href="modelo.html#cb126-9" tabindex="-1"></a></span>
+<span id="cb126-10"><a href="modelo.html#cb126-10" tabindex="-1"></a><span class="fu">ggplot</span>(curvas, <span class="fu">aes</span>(Dias, Probabilidad, <span class="at">color =</span> Municipio)) <span class="sc">+</span></span>
+<span id="cb126-11"><a href="modelo.html#cb126-11" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">&quot;rect&quot;</span>, <span class="at">xmin =</span> <span class="sc">-</span><span class="cn">Inf</span>, <span class="at">xmax =</span> <span class="cn">Inf</span>, <span class="at">ymin =</span> <span class="dv">50</span>, <span class="at">ymax =</span> <span class="dv">100</span>, <span class="at">fill =</span> <span class="st">&quot;#fbe9eb&quot;</span>, <span class="at">alpha =</span> <span class="fl">0.7</span>) <span class="sc">+</span></span>
+<span id="cb126-12"><a href="modelo.html#cb126-12" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="dv">50</span>, <span class="at">linetype =</span> <span class="st">&quot;dashed&quot;</span>, <span class="at">color =</span> <span class="st">&quot;grey50&quot;</span>) <span class="sc">+</span></span>
+<span id="cb126-13"><a href="modelo.html#cb126-13" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">linewidth =</span> <span class="fl">1.1</span>) <span class="sc">+</span></span>
+<span id="cb126-14"><a href="modelo.html#cb126-14" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&quot;Bogotá&quot;</span> <span class="ot">=</span> <span class="st">&quot;#a23b48&quot;</span>, <span class="st">&quot;Medellín&quot;</span> <span class="ot">=</span> <span class="st">&quot;#eb6834&quot;</span>, <span class="st">&quot;Santa Marta&quot;</span> <span class="ot">=</span> <span class="st">&quot;#2a78d6&quot;</span>)) <span class="sc">+</span></span>
+<span id="cb126-15"><a href="modelo.html#cb126-15" tabindex="-1"></a>  <span class="fu">coord_cartesian</span>(<span class="at">ylim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">100</span>)) <span class="sc">+</span></span>
+<span id="cb126-16"><a href="modelo.html#cb126-16" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Probabilidad de excedencia según los días medidos&quot;</span>, <span class="at">subtitle =</span> <span class="st">&quot;Estación fija, año 2024&quot;</span>,</span>
+<span id="cb126-17"><a href="modelo.html#cb126-17" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">&quot;Días medidos en el año&quot;</span>, <span class="at">y =</span> <span class="st">&quot;Probabilidad de excedencia (%)&quot;</span>, <span class="at">color =</span> <span class="cn">NULL</span>) <span class="sc">+</span></span>
+<span id="cb126-18"><a href="modelo.html#cb126-18" tabindex="-1"></a>  tema <span class="sc">+</span> <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&quot;top&quot;</span>)</span></code></pre></div>
+<p><img src="eda-calidad-aire_files/figure-html/modelo-curvas-1.png" width="100%" style="display: block; margin: auto;" /></p>
+<div class="interpretacion">
+<p>En los tres municipios la probabilidad sube con los días medidos. Medellín y Bogotá pasan el 50 % con unos 50 y 130 días, mientras que Santa Marta no llega al 50 % aunque se mida todo el año. Es el mismo patrón que se vio en el análisis exploratorio: la excedencia depende tanto del lugar como de cuántos días se midió.</p>
+</div>
+<div class="precaucion">
+<p>El modelo no pronostica concentraciones ni días concretos. Estima la probabilidad de que una estación tenga al menos un día sobre el límite en el año, según su ubicación, su tipo, su cobertura y el año. Para años después de 2024 la respuesta equivale a suponer condiciones parecidas a las de 2024.</p>
+</div>
+</div>
+<div id="integración-en-la-aplicación-y-el-dashboard" class="section level2 hasAnchor" number="3.7">
+<h2><span class="header-section-number">3.7</span> Integración en la aplicación y el dashboard<a href="modelo.html#integración-en-la-aplicación-y-el-dashboard" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>El modelo está integrado en las dos herramientas interactivas, con dos páginas:</p>
+<ul>
+<li>Entrenamiento del modelo: se elige el algoritmo y el porcentaje de estaciones para entrenar, y se muestran las métricas en prueba, la matriz de confusión y la curva ROC.</li>
+<li>Predicción: se eligen el municipio, el tipo de estación, los días medidos y el año, o se carga un ejemplo de riesgo alto o bajo, y se obtiene la probabilidad de excedencia con un mapa satelital del riesgo por municipio.</li>
+</ul>
+<table>
+<colgroup>
+<col width="33%" />
+<col width="33%" />
+<col width="33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Herramienta</th>
+<th>Modelos</th>
+<th>Enlace</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Shiny (R)</td>
+<td>Regresión logística, bosque aleatorio y GAM</td>
+<td><a href="https://l28nb2-camilo-romero.shinyapps.io/calidad-aire-colombia/">l28nb2-camilo-romero.shinyapps.io/calidad-aire-colombia</a></td>
+</tr>
+<tr class="even">
+<td>Dash (Python)</td>
+<td>Regresión logística, bosque aleatorio y gradient boosting</td>
+<td><a href="https://eda-dashboard-2pvi.onrender.com/">eda-dashboard-2pvi.onrender.com</a></td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+            </section>
+
+          </div>
+        </div>
+      </div>
+<a href="eda.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="conclusiones.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+    </div>
+  </div>
+<script src="libs/gitbook-2.6.7/js/app.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-fontsettings.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-bookdown.js"></script>
+<script src="libs/gitbook-2.6.7/js/jquery.highlight.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-clipboard.js"></script>
+<script>
+gitbook.require(["gitbook"], function(gitbook) {
+gitbook.start({
+"sharing": false,
+"fontsettings": {
+"theme": "white",
+"family": "sans",
+"size": 2
+},
+"edit": {
+"link": null,
+"text": null
+},
+"history": {
+"link": null,
+"text": null
+},
+"view": {
+"link": null,
+"text": null
+},
+"download": null,
+"search": {
+"engine": "fuse",
+"options": null
+},
+"toc": {
+"collapse": "section",
+"toc_depth": 3
+}
+});
+});
+</script>
+
+</body>
+
+</html>

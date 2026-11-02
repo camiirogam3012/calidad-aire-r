@@ -6,6 +6,16 @@
   margin: 14px 0 22px;
 }
 .interpretacion p { margin: 6px 0; }
+.interpretacion::before, .precaucion::before {
+  display: block;
+  font-size: 0.78em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.interpretacion::before { content: "Interpretación"; color: #0f6e6a; }
+.precaucion::before { content: "Precaución"; color: #b36200; }
 .interpretacion ul { margin: 6px 0; }
 .precaucion {
   background: #fff7ec;
@@ -17,3 +27,11 @@
 }
 .book .book-body .page-wrapper .page-inner section.normal table { font-size: 0.9em; }
 .book .book-body .page-wrapper .page-inner section.normal em { color: #0f6e6a; }
+
+.book .book-body .page-wrapper .page-inner section.normal table thead th {
+  background: #1c2b33; color: #fff; font-weight: 500; border-color: #1c2b33; padding: 7px 12px;
+}
+.book .book-body .page-wrapper .page-inner section.normal table td { padding: 6px 12px; border-color: #d5dee2; }
+.book .book-body .page-wrapper .page-inner section.normal table tbody tr:nth-child(even) td { background: #f3f7f8; }
+.book .book-body .page-wrapper .page-inner section.normal table { border-collapse: collapse; margin: 0.4em 0 1.2em; }
+.book .book-body .page-wrapper .page-inner section.normal strong, .book .book-body .page-wrapper .page-inner section.normal b { font-weight: 500; }

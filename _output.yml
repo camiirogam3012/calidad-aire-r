@@ -6,7 +6,7 @@ bookdown::gitbook:
       collapse: section
       toc_depth: 3
       before: |
-        <li><strong>&nbsp;Calidad del aire en Colombia</strong><br>&nbsp;<span style="font-size:.85em">Camilo Romero</span></li>
+        <li><span style="font-weight:500">&nbsp;Calidad del aire en Colombia</span><br>&nbsp;<span style="font-size:.85em">Camilo Romero</span></li>
       after: |
         <li><a href="https://www.uninorte.edu.co" target="_blank">Universidad del Norte</a></li>
     download: no
